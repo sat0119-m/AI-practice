@@ -74,11 +74,11 @@ Phoenix (r7), Lafayette (r8), St. Louis (r9), Albuquerque (r10), Omaha (r11), Bo
 | 鉄道 | 0.05 | 45 |
 
 $$
-c_{pd,\text{road\_only}} = \max(0.10\,\ell^{\text{road}}_{pd},\ 25)
+c_{pd,\text{road-only}} = \max(0.10\thinspace \ell^{\text{road}}_{pd},\ 25)
 $$
 
 $$
-c_{pd,\text{rail\_road}} = \max(0.05\,\ell^{\text{rail}}_{p\,r(d)},\ 45) + \max(0.10\,\ell^{\text{road}}_{r(d)\,d},\ 25)
+c_{pd,\text{rail-road}} = \max(0.05\thinspace \ell^{\text{rail}}_{p\thinspace r(d)},\ 45) + \max(0.10\thinspace \ell^{\text{road}}_{r(d)\thinspace d},\ 25)
 $$
 
 ### 輸送1トン当たりの CO2 排出量 $e_{pdt}$ [ton]
@@ -88,8 +88,8 @@ $$
 出典：Shirley & Gecan (2022), *Emissions of Carbon Dioxide in the Transportation Sector*, CBO.
 
 $$
-e_{pd,\text{road\_only}} = \frac{0.4}{2204.62}\,\ell^{\text{road}}_{pd},\qquad
-e_{pd,\text{rail\_road}} = \frac{0.05}{2204.62}\,\ell^{\text{rail}}_{p\,r(d)} + \frac{0.4}{2204.62}\,\ell^{\text{road}}_{r(d)\,d}
+e_{pd,\text{road-only}} = \frac{0.4}{2204.62}\thinspace \ell^{\text{road}}_{pd},\qquad
+e_{pd,\text{rail-road}} = \frac{0.05}{2204.62}\thinspace \ell^{\text{rail}}_{p\thinspace r(d)} + \frac{0.4}{2204.62}\thinspace \ell^{\text{road}}_{r(d)\thinspace d}
 $$
 
 ### 所要日数 $\tau_{pdt}$ [day]
@@ -98,8 +98,8 @@ $$
 鉄道ターミナルでは 1.5 日滞留する。
 
 $$
-\tau_{pd,\text{road\_only}} = \frac{\ell^{\text{road}}_{pd}}{60 \times 8},\qquad
-\tau_{pd,\text{rail\_road}} = \frac{\ell^{\text{rail}}_{p\,r(d)}}{35 \times 8} + \frac{\ell^{\text{road}}_{r(d)\,d}}{60 \times 8} + 1.5
+\tau_{pd,\text{road-only}} = \frac{\ell^{\text{road}}_{pd}}{60 \times 8},\qquad
+\tau_{pd,\text{rail-road}} = \frac{\ell^{\text{rail}}_{p\thinspace r(d)}}{35 \times 8} + \frac{\ell^{\text{road}}_{r(d)\thinspace d}}{60 \times 8} + 1.5
 $$
 
 ### 例：Los Angeles 港 → Portland（d1）
@@ -115,7 +115,7 @@ $$
 
 ### 集合
 
-- $P$：港、$D$：配送センター、$T = \{\text{road\_only}, \text{rail\_road}\}$：輸送モード
+- $P$：港、$D$：配送センター、$T = \lbrace \text{road-only}, \text{rail-road}\rbrace$：輸送モード（コードでは `road_only`, `rail_road`）
 
 ### パラメータ
 
@@ -129,15 +129,15 @@ $$
 ### 目的関数（候補）
 
 $$
-\text{TotalCost} = \sum_{p,d,t} c_{pdt}\,x_{pdt}
+\text{TotalCost} = \sum_{p,d,t} c_{pdt}\thinspace x_{pdt}
 $$
 
 $$
-\text{AvgDuration} = \sum_{p,d,t} \frac{\tau_{pdt}}{Q}\,x_{pdt}\quad(\text{1トン当たりの平均所要日数})
+\text{AvgDuration} = \sum_{p,d,t} \frac{\tau_{pdt}}{Q}\thinspace x_{pdt}\quad(\text{1トン当たりの平均所要日数})
 $$
 
 $$
-\text{TotalEmissions} = \sum_{p,d,t} e_{pdt}\,x_{pdt}
+\text{TotalEmissions} = \sum_{p,d,t} e_{pdt}\thinspace x_{pdt}
 $$
 
 演習で扱うのは **TotalCost** と **AvgDuration** の2つ。
