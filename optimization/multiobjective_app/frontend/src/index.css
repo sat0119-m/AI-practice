@@ -1,0 +1,531 @@
+:root {
+  color-scheme: light;
+  --surface-0: #f4f3ef;
+  --surface-1: #fcfcfb;
+  --border: #e3e2dc;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #8a8984;
+  --accent: #2a78d6;
+  --accent-soft: #e6f0fc;
+  --error: #d03b3b;
+  --error-soft: #fbeaea;
+  --notice-soft: #fff6dc;
+  font-family: "Hiragino Sans", "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
+  color: var(--text-primary);
+  background: var(--surface-0);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--surface-0);
+}
+
+h1,
+h2 {
+  margin: 0;
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.small {
+  font-size: 13px;
+}
+
+/* 全体のレイアウト */
+.app {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 20px 16px 40px;
+}
+
+.header h1 {
+  font-size: 22px;
+}
+
+.header p {
+  margin: 6px 0 18px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.panel,
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.card h2 {
+  font-size: 15px;
+  margin-bottom: 12px;
+}
+
+/* 入力欄 */
+.field {
+  display: grid;
+  grid-template-columns: 1fr 96px;
+  align-items: center;
+  gap: 2px 8px;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+
+.field .unit {
+  grid-column: 2;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.field .field-error {
+  grid-column: 1 / -1;
+  color: var(--error);
+  font-size: 12px;
+}
+
+.field.invalid input,
+tr.invalid input {
+  border-color: var(--error);
+  background: var(--error-soft);
+}
+
+.validation {
+  margin: 0 0 10px;
+  padding: 8px 10px 8px 26px;
+  border-radius: 6px;
+  background: var(--error-soft);
+  color: var(--error);
+  font-size: 12px;
+}
+
+input[type="number"] {
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: inherit;
+  text-align: right;
+  background: #fff;
+}
+
+input[type="number"]:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+button {
+  font: inherit;
+  font-size: 14px;
+  padding: 7px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: #fff;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.actions .primary {
+  flex: 1;
+}
+
+/* 主目的の切り替え */
+.segmented {
+  border: none;
+  padding: 0;
+  margin: 0 0 12px;
+  display: grid;
+  gap: 6px;
+}
+
+.segmented label {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.segmented label.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.segmented input {
+  margin-top: 3px;
+}
+
+.segmented span {
+  display: flex;
+  flex-direction: column;
+}
+
+.segmented small {
+  color: var(--text-secondary);
+}
+
+.totals {
+  font-size: 13px;
+  margin: 0 0 8px;
+}
+
+details {
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+summary {
+  cursor: pointer;
+  padding: 4px 0;
+  color: var(--text-secondary);
+}
+
+.input-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.input-table td {
+  padding: 3px 0;
+}
+
+.input-table td:last-child {
+  width: 96px;
+}
+
+/* メッセージ */
+.error {
+  background: var(--error-soft);
+  color: var(--error);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+}
+
+.error-text {
+  color: var(--error);
+}
+
+.notice {
+  background: var(--notice-soft);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+}
+
+.notice.busy::before {
+  content: "";
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 8px;
+  border: 2px solid var(--text-muted);
+  border-top-color: transparent;
+  border-radius: 50%;
+  vertical-align: -1px;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-page {
+  padding: 40px;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+/* 数値のタイル */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.stats.four {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 700px) {
+  .stats,
+  .stats.four {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.stat {
+  border-left: 3px solid var(--border);
+  padding-left: 10px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  margin-top: 2px;
+}
+
+.stat-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 11px;
+}
+
+/* グラフ */
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.swatch-ring {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--text-primary);
+  border-radius: 50%;
+}
+
+.swatch-dashed {
+  width: 12px;
+  height: 12px;
+  border: 1.5px dashed var(--text-muted);
+  border-radius: 50%;
+}
+
+.gradient {
+  width: 80px;
+  height: 8px;
+  border-radius: 4px;
+}
+
+.chart-box {
+  overflow: hidden;
+}
+
+.tooltip {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.6;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.tooltip-title {
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+/* ε の選択 */
+.eps-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+}
+
+.eps-row input[type="range"] {
+  flex: 1 1 280px;
+  accent-color: var(--accent);
+}
+
+.eps-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.eps-input label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.eps-input input {
+  width: 90px;
+}
+
+.cap {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 8px 0 14px;
+}
+
+/* 輸送モードの割合 */
+.share {
+  margin-top: 16px;
+}
+
+.share-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.share-bar {
+  display: flex;
+  gap: 2px;
+  height: 14px;
+}
+
+.share-bar div:first-child {
+  border-radius: 4px 0 0 4px;
+}
+
+.share-bar div:last-child {
+  border-radius: 0 4px 4px 0;
+}
+
+.share-bar div:only-child {
+  border-radius: 4px;
+}
+
+.share-legend {
+  display: flex;
+  gap: 18px;
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+.dot-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  vertical-align: -1px;
+}
+
+.dot-swatch.big {
+  width: 13px;
+  height: 13px;
+}
+
+.line-swatch {
+  display: inline-block;
+  width: 18px;
+  height: 4px;
+  border-radius: 2px;
+  vertical-align: 3px;
+}
+
+/* 地図 */
+.map-wrap {
+  position: relative;
+}
+
+.map {
+  height: 520px;
+  border-radius: 8px;
+}
+
+.map-legend {
+  position: absolute;
+  right: 10px;
+  bottom: 22px;
+  z-index: 1000;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+/* 輸送フローの一覧 */
+.flow-table table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 6px;
+}
+
+.flow-table th,
+.flow-table td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+.flow-table th {
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.flow-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}

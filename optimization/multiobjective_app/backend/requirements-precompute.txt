@@ -1,0 +1,4 @@
+# 事前計算（precompute_network.py）だけで使うパッケージ
+scgraph==2.1.0
+scgraph_data==2.0.0
+geopy
