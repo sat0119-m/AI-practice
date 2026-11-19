@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# LaTeX
+*.aux
+*.log
+*.fls
+*.fdb_latexmk
+*.nav
+*.snm
+*.toc
+*.out
+*.vrb
+*.synctex.gz
+
+# 結果・一時ファイル
+results*/
+*.tmp
+
+# OS
+Thumbs.db
+.DS_Store
