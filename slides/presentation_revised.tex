@@ -11,7 +11,7 @@
 \usepackage{xcolor}
 \usepackage{listings}
 \usepackage{colortbl}
-\usetikzlibrary{positioning}
+\usetikzlibrary{positioning,calc}
 
 % ---------- Colors ----------
 \definecolor{TitleBlue}{HTML}{1E6BC5}
@@ -123,22 +123,59 @@
 
 
 
+\begin{frame}[shrink=3]{発表の流れ}
+\begin{columns}[T,totalwidth=\textwidth]
+\begin{column}{0.55\textwidth}
+\begin{enumerate}
+\item \textbf{アプリの画面}：何ができるか
+\item \textbf{問題設定}：何を、どこへ、どう運ぶか
+\item \textbf{最適化モデル}：線形計画としての定式化
+\item \textbf{ε制約法}：2つの目的を同時に扱う方法
+\item \textbf{結果}：パレートフロントと3つの代表解
+\item \textbf{アプリの構成と使い方}：しくみと操作
+\item \textbf{まとめ}：選び方の指針と限界
+\end{enumerate}
+\end{column}
+\begin{column}{0.40\textwidth}
+\begin{block}{付録}
+\scriptsize
+\begin{itemize}
+\item 主目的の切替（日数 vs コスト）
+\item 単位・パラメータ
+\item 用語集
+\item AMPLコード
+\end{itemize}
+\end{block}
+\end{column}
+\end{columns}
+\end{frame}
+
 \begin{frame}[shrink=3]{アプリの画面と機能}
 \begin{columns}[T,totalwidth=\textwidth]
-\begin{column}{0.60\textwidth}
+\begin{column}{0.62\textwidth}
 \centering
-\begin{tikzpicture}
-\node[inner sep=0pt] (screen) {\includegraphics[width=\linewidth]{\imgdir/app_overview.png}};
-\node[circle,fill=TitleBlue,text=white,inner sep=2pt,font=\scriptsize\bfseries] at ([xshift=-20mm,yshift=12mm]screen.center) {1};
-\node[circle,fill=TitleBlue,text=white,inner sep=2pt,font=\scriptsize\bfseries] at ([xshift=-20mm,yshift=-2mm]screen.center) {2};
-\node[circle,fill=TitleBlue,text=white,inner sep=2pt,font=\scriptsize\bfseries] at ([xshift=20mm,yshift=14mm]screen.center) {3};
-\node[circle,fill=TitleBlue,text=white,inner sep=2pt,font=\scriptsize\bfseries] at ([xshift=21mm,yshift=1mm]screen.center) {4};
-\node[circle,fill=TitleBlue,text=white,inner sep=2pt,font=\scriptsize\bfseries] at ([xshift=21mm,yshift=-14mm]screen.center) {5};
+% 番号は画像上の座標（横2000×縦1286に換算、左上が原点）で各パネルの見出しに合わせて置く
+\begin{tikzpicture}[
+  numbadge/.style={circle,fill=TitleBlue,text=white,draw=white,line width=1pt,
+               inner sep=1.5pt,minimum size=5mm,font=\footnotesize\bfseries}]
+\node[inner sep=0pt,anchor=south west] (screen) at (0,0) {\includegraphics[width=\linewidth]{\imgdir/app_overview.png}};
+\begin{scope}[x={($(screen.south east)-(screen.south west)$)},
+              y={($(screen.north west)-(screen.south west)$)}]
+\node[numbadge] at (30/2000,1-172/1286) {1};
+\node[numbadge] at (30/2000,1-588/1286) {2};
+\node[numbadge] at (500/2000,1-172/1286) {3};
+\node[numbadge] at (500/2000,1-353/1286) {4};
+\node[numbadge] at (500/2000,1-985/1286) {4};
+\node[numbadge] at (1240/2000,0.035) {5};
+\node[anchor=west,font=\tiny\bfseries,text=TitleBlue,fill=white,inner sep=1pt]
+  at (1270/2000,0.035) {$\downarrow$ 画面の下：地図・輸送一覧};
+\end{scope}
 \end{tikzpicture}
 \end{column}
-\begin{column}{0.37\textwidth}
+\begin{column}{0.36\textwidth}
 \scriptsize
-\begin{tabular}{>{\bfseries}p{0.08\linewidth}p{0.84\linewidth}}
+\renewcommand{\arraystretch}{0.95}
+\begin{tabular}{>{\bfseries}p{0.07\linewidth}p{0.85\linewidth}}
 \textbf{No.}&\textbf{画面の説明}\\
 \midrule
 1&\textbf{ε制約法の設定}\\
@@ -157,36 +194,7 @@
 &港からDCへの道路・鉄道フローを表示\\
 \bottomrule
 \end{tabular}
-\end{column}
-\end{columns}
-\vspace{2mm}
-\begin{alertblock}{補足}
-空欄や範囲外の入力は赤表示で理由を示し、計算ボタンを無効化。入力変更後は「計算」が必要。
-\end{alertblock}
-\end{frame}
-
-\begin{frame}[shrink=3]{発表の流れ}
-\begin{columns}[T,totalwidth=\textwidth]
-\begin{column}{0.55\textwidth}
-\begin{enumerate}
-\item \textbf{問題設定}：何を、どこへ、どう運ぶか
-\item \textbf{最適化モデル}：線形計画としての定式化
-\item \textbf{ε制約法}：2つの目的を同時に扱う方法
-\item \textbf{結果}：パレートフロントと3つの代表解
-\item \textbf{使い方}：アプリの画面と操作
-\item \textbf{まとめ}：選び方の指針と限界
-\end{enumerate}
-\end{column}
-\begin{column}{0.40\textwidth}
-\begin{block}{付録}
-\scriptsize
-\begin{itemize}
-\item 主目的の切替（日数 vs コスト）
-\item 単位・パラメータ
-\item 用語集
-\item AMPLコード
-\end{itemize}
-\end{block}
+% 入力エラー時の動き（赤表示・再計算が必要）は「アプリの使い方」のページで説明する
 \end{column}
 \end{columns}
 \end{frame}
@@ -310,11 +318,11 @@ x_{pdt}\ge0
 % =====================================================
 \section{ε制約法}
 
-\begin{frame}[shrink=3]{ε制約法のしくみ：片方を目的に、片方を上限に}
+\begin{frame}[shrink=10]{ε制約法のしくみ：片方を目的に、片方を上限に}
 \begin{columns}[T,totalwidth=\textwidth]
 \begin{column}{0.46\textwidth}
 \centering
-\begin{tikzpicture}[scale=0.85,>=stealth,font=\scriptsize]
+\begin{tikzpicture}[scale=0.60,>=stealth,font=\scriptsize]
   \coordinate (origin) at (0,0);
   \coordinate (top) at (0,4.0);
   % axes
@@ -331,7 +339,7 @@ x_{pdt}\ge0
   \draw[RoadOrange,thick,dashed] (m |- origin) -- (m |- top)
     node[above,text=RoadOrange,align=center] {コスト上限\\$C^U+\varepsilon(C^N-C^U)$};
   \fill[RoadOrange] (m) circle (2.2pt);
-  \node[RoadOrange,right=2pt of m] {この上限での最適解};
+  \node[RoadOrange,above right=1pt of m] {この上限での最適解};
   % ticks
   \draw (0.8,0.06) -- (0.8,-0.06) node[below] {$C^U$};
   \draw (4.2,0.06) -- (4.2,-0.06) node[below] {$C^N$};
@@ -340,6 +348,13 @@ x_{pdt}\ge0
   \node[below=9pt] at (0.8,-0.1) {\tiny $\varepsilon=0$};
   \node[below=9pt] at (4.2,-0.1) {\tiny $\varepsilon=1$};
 \end{tikzpicture}
+\begin{block}{定式化（主目的＝平均所要日数）}
+\scriptsize
+{\centering
+$\min\ \text{AvgDuration}(x)\quad
+\text{s.t.}\ \text{TotalCost}(x)\le C^U+\varepsilon(C^N-C^U)$\par}
+さらに需要・供給制約を加える。$\varepsilon=0$ でコスト最小、$\varepsilon=1$ で日数最短。
+\end{block}
 \end{column}
 \begin{column}{0.50\textwidth}
 \begin{block}{考え方}
@@ -347,35 +362,24 @@ x_{pdt}\ge0
 主目的を1つだけ最小化し、もう片方は「上限 $\varepsilon$ 以下」という制約にする。上限を少しずつ緩めて繰り返し解くと、トレードオフ曲線が描ける。
 \end{block}
 \begin{enumerate}\scriptsize
+\setlength{\itemsep}{0pt}\setlength{\topsep}{2pt}
 \item 各目的を単独で最小化（ユートピア点・ナディア点を得る）
 \item 値を $[0,1]$ に正規化
 \item 主目的（日数）を最小化
 \item コストを上限 $C^U+\varepsilon(C^N-C^U)$ で制約
 \item $\varepsilon$ を0から1へ動かして繰り返す
 \end{enumerate}
-\begin{block}{定式化（主目的＝平均所要日数）}
-\scriptsize
-\[
-\min\ \text{AvgDuration}(x)\quad
-\text{s.t.}\ \text{TotalCost}(x)\le C^U+\varepsilon(C^N-C^U)
-\]
-さらに需要・供給制約を加える。$\varepsilon=0$ でコスト最小、$\varepsilon=1$ で日数最短。
-\end{block}
 \end{column}
 \end{columns}
 \end{frame}
 
-\begin{frame}[shrink=3]{ユートピア点とナディア点：$\varepsilon$ の範囲を決める}
+\begin{frame}[shrink=10]{ユートピア点とナディア点：$\varepsilon$ の範囲を決める}
+% 画面画像は横長（約9:1）なので、段組みの外に横幅いっぱいで置く
+\centering
+\includegraphics[width=\textwidth]{\imgdir/utopia_nadir.png}\par
+\vspace{-1mm}
 \begin{columns}[T,totalwidth=0.97\textwidth]
 \begin{column}{0.50\textwidth}
-\includegraphics[width=\linewidth,height=0.50\textheight,keepaspectratio]{\imgdir/utopia_nadir.png}
-\begin{center}\scriptsize ユートピア点とナディア点の位置関係\end{center}
-\begin{alertblock}{ユートピア点は実現できない}
-\footnotesize
-コスト最小の解は5.32日かかり、日数最短の解は\$1,812,413かかる。両方の最良値を同時には達成できない。
-\end{alertblock}
-\end{column}
-\begin{column}{0.46\textwidth}
 \centering\scriptsize
 \begin{tabular}{lr}
 \toprule
@@ -389,7 +393,17 @@ x_{pdt}\ge0
 ナディア：最長日数 $D^N$ & 5.32日\\
 \bottomrule
 \end{tabular}
-\vspace{2mm}
+\vspace{1mm}
+\begin{alertblock}{ユートピア点は実現できない}
+\scriptsize
+コスト最小の解は5.32日かかり、日数最短の解は\$1,812,413かかる。両方の最良値を同時には達成できない。
+\end{alertblock}
+\end{column}
+\begin{column}{0.46\textwidth}
+\begin{alertblock}{範囲の大きさ}
+\scriptsize
+コスト差 \$501,102（約38.2\%）／日数差 2.82日（約53\%）
+\end{alertblock}
 \begin{block}{正規化}
 \[
 \bar f(x)=\frac{f(x)-f^U}{f^N-f^U}\in[0,1]
@@ -397,10 +411,6 @@ x_{pdt}\ge0
 \scriptsize
 $\bar f=0$：ユートピア側、$\bar f=1$：ナディア側。単位の違うコストと日数を揃え、$\varepsilon$ を0〜1で制御できる。
 \end{block}
-\begin{alertblock}{範囲の大きさ}
-\scriptsize
-コスト差 \$501,102（約38.2\%）／日数差 2.82日（約53\%）
-\end{alertblock}
 \end{column}
 \end{columns}
 \end{frame}
@@ -439,16 +449,17 @@ $\varepsilon=0$ は安いが遅い端、$\varepsilon=1$ は速いが高い端（
 
 \begin{frame}[shrink=3]{パレートフロント：読み方のポイント}
 \begin{columns}[T,totalwidth=\textwidth]
-\begin{column}{0.56\textwidth}
+\begin{column}{0.50\textwidth}
 \includegraphics[width=\linewidth,height=0.58\textheight,keepaspectratio]{\imgdir/pareto_front.png}
 \begin{alertblock}{収穫逓減}
 $\varepsilon$ が0.1増えるたびコストは約+\$50,110。\\
 1日短縮の追加コストは\textbf{約\$6万/日 $\to$ 約\$31万/日}（5倍超）。
 \end{alertblock}
 \end{column}
-\begin{column}{0.41\textwidth}
-\scriptsize
-\begin{enumerate}
+\begin{column}{0.47\textwidth}
+% 箇条書きの中はテンプレートで \small になるため、\scriptsize は enumerate の中に書く
+\begin{enumerate}\scriptsize
+\setlength{\itemsep}{1pt}\setlength{\topsep}{0pt}
 \item \textbf{曲線は右下がり}\\
 左上は安いが遅く、右下は速いが高い。曲線上の点はどれも最適で、方針によって選ぶ。曲線より左下は実現できない。
 \item \textbf{最初の追加予算ほど効く}\\
@@ -607,23 +618,53 @@ CO\textsubscript{2} & 3,272t\\
 
 
 
-\begin{frame}[shrink=3]{アプリの使い方}
+\begin{frame}[shrink=3]{アプリの構成：画面・API・最適化の3層}
+\centering
+\begin{tikzpicture}[
+  box/.style={draw=TitleBlue,fill=LightBlue!60,rounded corners=3pt,align=center,
+              text width=33mm,minimum height=17mm,font=\scriptsize},
+  pre/.style={draw=MidGray,dashed,fill=white,rounded corners=3pt,align=center,
+              text width=36mm,minimum height=10mm,font=\scriptsize},
+  arr/.style={->,>=stealth,thick,TitleBlue},
+  lab/.style={font=\tiny,text=TextNavy,align=center}]
+\node[box] (ui) {\textbf{画面（React）}\\[0.5mm] グラフ：Recharts\\ 地図：Leaflet＋OpenStreetMap};
+\node[box,right=17mm of ui,text width=40mm] (api) {\textbf{API（FastAPI）}\\[0.5mm] /api/network（初期データ）\\ /api/frontier（パレートフロント）\\ /api/solve（指定した $\varepsilon$）};
+\node[box,right=17mm of api] (opt) {\textbf{最適化（AMPL＋HiGHS）}\\[0.5mm] amplpy でデータを渡し\\ 線形計画を解く};
+\draw[arr] ([yshift=2mm]ui.east) -- node[lab,above]{入力値} ([yshift=2mm]api.west);
+\draw[arr] ([yshift=-2mm]api.west) -- node[lab,below]{結果（JSON）} ([yshift=-2mm]ui.east);
+\draw[arr] ([yshift=2mm]api.east) -- node[lab,above]{モデル＋データ} ([yshift=2mm]opt.west);
+\draw[arr] ([yshift=-2mm]opt.east) -- node[lab,below]{解} ([yshift=-2mm]api.east);
+\node[pre,below=7mm of api] (net) {\textbf{network.json}\\ 港・DC間の道路・鉄道の距離};
+\node[pre,left=17mm of net] (sc) {\textbf{事前計算（1回だけ）}\\ scgraph で最短経路を計算};
+\draw[arr,MidGray] (sc) -- (net);
+\draw[arr,MidGray] (net) -- node[lab,right]{起動時に読み込む} (api);
+\end{tikzpicture}
+\vspace{2mm}
+\begin{alertblock}{スライダーが待ち時間なしで切り替わる理由}
+\scriptsize
+「計算」のとき、表示する点に加えて $\varepsilon$ を\textbf{0.01刻みにした101点}も、AMPLの集合 $K$ を使って\textbf{1回のソルバー呼び出しでまとめて解いておく}。
+スライダーは計算済みの解を表示するだけなので、待ち時間なしで切り替わる。0.333 など0.01刻みでない値だけは、その1点を追加で解く（約5秒）。
+\end{alertblock}
+\end{frame}
+
+\begin{frame}[shrink=10]{アプリの使い方}
 \begin{columns}[T,totalwidth=\textwidth]
-\begin{column}{0.46\textwidth}
+\begin{column}{0.38\textwidth}
 \includegraphics[width=\linewidth]{\imgdir/settings_panel.png}
+\begin{block}{実用上のポイント}
+入力エラーは欄が赤表示になる。入力を変えたら再計算が必要。
+\end{block}
 \end{column}
-\begin{column}{0.51\textwidth}
+\begin{column}{0.59\textwidth}
 \begin{enumerate}
+\setlength{\itemsep}{1pt}\setlength{\topsep}{0pt}
 \item アプリを開く（起動時は初期値で計算：10〜20秒）
 \item 主目的を選ぶ（初期値は所要日数の最小化）
 \item 必要ならパラメータを変更して「計算」
 \item パレートフロント上の点にマウスを乗せて値を確認し、クリックして選択
-\item $\varepsilon$ スライダーで解を切り替える（0.333などの細かい値は数値欄から。追加で約5秒）
+\item $\varepsilon$ スライダーで解を切り替える（0.01刻みの101点は計算済みなので即座に切り替わる。0.333などの細かい値は数値欄から入力し、追加で約5秒）
 \item 地図と一覧表で、港・DC・輸送モード・輸送量を確認
 \end{enumerate}
-\begin{block}{実用上のポイント}
-入力エラーは欄が赤表示になる。入力を変えたら再計算が必要。
-\end{block}
 \end{column}
 \end{columns}
 \end{frame}
@@ -794,8 +835,11 @@ CO\textsubscript{2}も同時に最小化したわけではない。日数を縮�
 \end{frame}
 
 \begin{frame}[fragile]{付録D：AMPLコード（モデル定義）}
+% 1列では下端からはみ出すため、集合・パラメータ（左）と変数（右）の2列に分ける
+\begin{columns}[T,totalwidth=\textwidth]
+\begin{column}{0.44\textwidth}
 \begin{lstlisting}[style=amplcode]
-set K;                            # 同時に解くε制約問題
+set K;         # 同時に解くε制約問題
 set PORTS;
 set DCS;
 set MODES;
@@ -810,6 +854,10 @@ param w_cost {K} default 0;
 param w_duration {K} default 0;
 param cost_cap {K} default Infinity;
 param duration_cap {K} default Infinity;
+\end{lstlisting}
+\end{column}
+\begin{column}{0.54\textwidth}
+\begin{lstlisting}[style=amplcode,firstnumber=16]
 
 var flow {K,PORTS,DCS,MODES} >= 0;
 
@@ -821,6 +869,8 @@ var AvgDuration {k in K} =
   sum {p in PORTS,d in DCS,t in MODES}
       duration[p,d,t]/total_demand*flow[k,p,d,t];
 \end{lstlisting}
+\end{column}
+\end{columns}
 \end{frame}
 
 \begin{frame}[fragile,shrink=8]{付録E：AMPLコード（目的・制約・ε制約）}
