@@ -1,120 +1,108 @@
-\documentclass[aspectratio=169,12pt]{beamer}
-\usetheme{metropolis}
+% !TEX program = lualatex
+% LuaLaTeX でコンパイル: latexmk -lualatex presentation_revised.tex
+% デザインは ../../1027_AMPL/slides/slides.tex に合わせている
+\documentclass[aspectratio=169,11pt]{beamer}
 
-\usepackage{luatexja-fontspec}
-\usepackage{fontspec}
-\usepackage{graphicx}
-\usepackage{booktabs}
-\usepackage{tikz}
-\usepackage{amsmath}
-\usepackage{array}
-\usepackage{xcolor}
-\usepackage{listings}
-\usepackage{colortbl}
-\usetikzlibrary{positioning,calc}
+\usetheme[progressbar=frametitle,numbering=fraction,sectionpage=none]{metropolis}
 
-% ---------- Colors ----------
-\definecolor{TitleBlue}{HTML}{1E6BC5}
-\definecolor{TextNavy}{HTML}{1E293B}
-\definecolor{LightBlue}{HTML}{DCEEFF}
+% 配色：爽やかな青
+\definecolor{BlueMain}{HTML}{1E6BC5}    % フレームタイトル・図の線
+\definecolor{BlueAccent}{HTML}{0284C7}  % 強調文字
+\definecolor{BlueLight}{HTML}{38BDF8}   % プログレスバー・区切り線
+\definecolor{BlueText}{HTML}{1E293B}    % 本文
 \definecolor{RailGreen}{HTML}{2E8B57}
 \definecolor{RoadOrange}{HTML}{F97316}
 \definecolor{MidGray}{HTML}{64748B}
-\definecolor{CodeGray}{HTML}{334155}
-\definecolor{CodeBg}{HTML}{F1F5F9}
+% 図・表で使う別名
+\colorlet{TitleBlue}{BlueMain}
+\colorlet{TextNavy}{BlueText}
+\colorlet{LightBlue}{BlueLight!15}
+\setbeamercolor{normal text}{fg=BlueText, bg=white}
+\setbeamercolor{frametitle}{fg=white, bg=BlueMain}
+\setbeamercolor{palette primary}{fg=white, bg=BlueMain}
+\setbeamercolor{progress bar}{fg=BlueLight, bg=BlueMain!20}
+\setbeamercolor{title separator}{fg=BlueLight}
+\setbeamercolor{alerted text}{fg=BlueAccent}
+\setbeamercolor{block title}{fg=BlueMain, bg=BlueLight!12}
+\setbeamercolor{block body}{fg=BlueText, bg=BlueLight!12}
+\setbeamercolor{block title alerted}{fg=BlueMain, bg=BlueMain!10}
+\setbeamercolor{block body alerted}{fg=BlueText, bg=BlueMain!10}
+\usepackage{luatexja-fontspec}
+% 和文はゴシック。本文は Regular（Fira Sans Light に合わせる）、太字は Medium（Fira Sans Regular に合わせる）
+\setmainjfont{HaranoAjiGothic-Regular.otf}[BoldFont=HaranoAjiGothic-Medium.otf]
+\setsansjfont{HaranoAjiGothic-Regular.otf}[BoldFont=HaranoAjiGothic-Medium.otf]
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{colortbl}
+\usepackage{listings}
+\usepackage{tikz}
+\usetikzlibrary{positioning,calc,patterns}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\renewcommand{\arraystretch}{1.05}
 
-% ---------- Code style ----------
+% ---------- AMPL コード ----------
+\lstdefinelanguage{AMPL}{
+  morekeywords={set,param,var,minimize,maximize,subject,to,s.t.,sum,in,within,binary,
+    integer,default,and,Infinity},
+  sensitive=true,
+  morecomment=[l]{\#},
+}
 \lstdefinestyle{amplcode}{
-  language={},
-  basicstyle=\ttfamily\fontsize{6.6}{7.8}\selectfont,
-  keywordstyle=\bfseries,
-  commentstyle=\itshape\color{MidGray},
-  backgroundcolor=\color{CodeBg},
-  frame=single,
-  framerule=0.2pt,
-  rulecolor=\color{LightBlue},
+  language=AMPL,
+  basicstyle=\ttfamily\fontsize{7}{8.6}\selectfont,
   numbers=left,
   numberstyle=\tiny\color{MidGray},
   numbersep=4pt,
-  xleftmargin=8pt,
-  xrightmargin=4pt,
+  xleftmargin=10pt,
+  keywordstyle=\color{BlueAccent}\bfseries,
+  commentstyle=\color{BlueMain!60!gray},
   breaklines=true,
-  showstringspaces=false,
   columns=fullflexible,
-  keepspaces=true
+  keepspaces=true,
+  showstringspaces=false,
 }
 
-% ---------- Beamer colors / fonts ----------
-\setbeamercolor{title}{fg=white,bg=TitleBlue}
-\setbeamercolor{frametitle}{fg=white,bg=TitleBlue}
-\setbeamercolor{normal text}{fg=TextNavy,bg=white}
-\setbeamercolor{alerted text}{fg=TitleBlue}
-\setbeamercolor{block title}{fg=TextNavy,bg=LightBlue}
-\setbeamercolor{block body}{fg=TextNavy,bg=LightBlue!55}
-\setbeamercolor{block title alerted}{fg=white,bg=TitleBlue}
-\setbeamercolor{block body alerted}{fg=TextNavy,bg=LightBlue!30}
-\setbeamercolor{progress bar}{fg=TitleBlue,bg=LightBlue}
-\setbeamercolor{progress bar in head/foot}{fg=TitleBlue,bg=LightBlue}
-\setbeamercolor{footline}{fg=MidGray,bg=white}
-\setbeamertemplate{frame numbering}[fraction]
-\setbeamertemplate{navigation symbols}{}
-
-\setsansfont[
-  Path=./fonts/,
-  UprightFont=FiraSans-Regular.ttf,
-  BoldFont=FiraSans-Bold.ttf,
-  ItalicFont=FiraSans-Regular.ttf
-]{Fira Sans}
-\setmainjfont{Harano Aji Gothic}
-\setbeamerfont{title}{size=\Huge}
-\setbeamerfont{frametitle}{size=\Large}
-\setbeamerfont{footline}{size=\scriptsize}
-\setbeamerfont{block body}{size=\small}
-\setbeamertemplate{itemize/enumerate body begin}{\small}
+% metropolis のタイトルページは高さ \paperheight の minipage を使うため Overfull \vbox が出る。高さだけ詰めて再定義する
+\makeatletter
+\setbeamertemplate{title page}{
+  \begin{minipage}[b][\dimexpr\paperheight-16pt\relax]{\textwidth}
+    \vfill%
+    \ifx\inserttitle\@empty\else\usebeamertemplate*{title}\fi
+    \ifx\insertsubtitle\@empty\else\usebeamertemplate*{subtitle}\fi
+    \usebeamertemplate*{title separator}
+    \ifx\beamer@shortauthor\@empty\else\usebeamertemplate*{author}\fi
+    \ifx\insertdate\@empty\else\usebeamertemplate*{date}\fi
+    \ifx\insertinstitute\@empty\else\usebeamertemplate*{institute}\fi
+    \vfill
+    \vspace*{1mm}
+  \end{minipage}
+}
+\makeatother
 
 % ---------- Helpers ----------
+% 発表でさっと飛ばすページ（記号・コード・付録）：タイトル帯を薄い色にする
+\setbeamerfont{block body}{size=\small}
+\setbeamerfont{block body alerted}{size=\small}
+\setbeamerfont{block title}{size=\normalsize}
+\setbeamerfont{block title alerted}{size=\normalsize}
+\newcommand{\lightframe}{\setbeamercolor{frametitle}{fg=BlueMain, bg=BlueLight!22}}
+% 各ページの結論
+\newcommand{\ketsuron}[1]{\par\vspace{2mm}\noindent{\setlength{\fboxsep}{4pt}\colorbox{BlueMain!10}{\parbox{\dimexpr\linewidth-8pt\relax}{\small #1}}}\par}
+\newcommand{\hl}[1]{\textcolor{BlueAccent}{\textbf{#1}}}
 \newcommand{\pill}[2]{\tikz[baseline=-0.5ex]\node[rounded corners=2pt,fill=#1,text=white,inner xsep=5pt,inner ysep=2pt]{\scriptsize\bfseries #2};}
 \newcommand{\imgdir}{../docs/images}
 
-\title{多目的最適化（ε制約法）\\ポートからDCへの輸送計画Webアプリ}
+\title{多目的最適化（$\varepsilon$制約法）による\\ポートからDCへの輸送計画Webアプリ}
 \subtitle{コストと所要日数のトレードオフを地図で可視化}
-\author{2523009 恩田梨那 \quad 2523019 佐藤美桜 \quad 2523023 詹媛媛}
-\date{}
+\author{2523009 恩田梨那\quad 2523019 佐藤美桜\quad 2523023 詹媛媛}
+\date{データサイエンスAI実践　2026年11月}
 
 \begin{document}
 
-% =====================================================
-% Title
-% =====================================================
-{
-\setbeamercolor{background canvas}{bg=white}
-\setbeamercolor{normal text}{fg=TextNavy,bg=white}
-\begin{frame}[plain]
-\begin{tikzpicture}[remember picture,overlay]
-\node[anchor=north west,text width=0.86\paperwidth,inner sep=0pt]
-  at ([xshift=20mm,yshift=-18mm]current page.north west) {
-  {\fontsize{24}{28}\selectfont\bfseries 多目的最適化（ε制約法）\par}
-  \vspace{3mm}
-  {\fontsize{22}{26}\selectfont\bfseries ポートからDCへの輸送計画Webアプリ\par}
-  \vspace{6mm}
-  {\normalsize コストと所要日数のトレードオフを地図で可視化\par}
-};
-\draw[TitleBlue,line width=1pt]
-  ([xshift=20mm,yshift=-52mm]current page.north west) --
-  ([xshift=-20mm,yshift=-52mm]current page.north east);
-\node[anchor=north west,text width=0.86\paperwidth,inner sep=0pt]
-  at ([xshift=20mm,yshift=-60mm]current page.north west) {
-  {\fontsize{16}{20}\selectfont
-  2523009 恩田梨那　2523019 佐藤美桜　2523023 詹媛媛\par}
-};
-\node[anchor=north west,text width=0.86\paperwidth,inner sep=0pt]
-  at ([xshift=20mm,yshift=-67mm]current page.north west) {
-  {\fontsize{16}{20}\selectfont
-  データサイエンスAI実践　2026年11月\par}
-};
-\end{tikzpicture}
-\end{frame}
-}
+\maketitle
 
 % =====================================================
 % Part 1: アプリ概要と発表の流れ
@@ -123,14 +111,14 @@
 
 
 
-\begin{frame}[shrink=3]{発表の流れ}
+\begin{frame}{発表の流れ}
 \begin{columns}[T,totalwidth=\textwidth]
 \begin{column}{0.55\textwidth}
 \begin{enumerate}
 \item \textbf{アプリの画面}：何ができるか
 \item \textbf{問題設定}：何を、どこへ、どう運ぶか
 \item \textbf{最適化モデル}：線形計画としての定式化
-\item \textbf{ε制約法}：2つの目的を同時に扱う方法
+\item \textbf{$\varepsilon$制約法}：2つの目的を同時に扱う方法
 \item \textbf{結果}：パレートフロントと3つの代表解
 \item \textbf{アプリの構成と使い方}：しくみと操作
 \item \textbf{まとめ}：選び方の指針と限界
@@ -138,7 +126,7 @@
 \end{column}
 \begin{column}{0.40\textwidth}
 \begin{block}{付録}
-\scriptsize
+\footnotesize
 \begin{itemize}
 \item 主目的の切替（日数 vs コスト）
 \item 単位・パラメータ
@@ -150,7 +138,7 @@
 \end{columns}
 \end{frame}
 
-\begin{frame}[shrink=3]{アプリの画面と機能}
+\begin{frame}{アプリの画面と機能}
 \begin{columns}[T,totalwidth=\textwidth]
 \begin{column}{0.62\textwidth}
 \centering
@@ -174,24 +162,16 @@
 \end{column}
 \begin{column}{0.36\textwidth}
 \scriptsize
-\renewcommand{\arraystretch}{0.95}
-\begin{tabular}{>{\bfseries}p{0.07\linewidth}p{0.85\linewidth}}
-\textbf{No.}&\textbf{画面の説明}\\
+\renewcommand{\arraystretch}{1.0}
+\begin{tabular}{>{\bfseries}p{0.06\linewidth}p{0.86\linewidth}}
+\toprule
+No. & 画面の説明\\
 \midrule
-1&\textbf{ε制約法の設定}\\
-&主目的、点数、計算、初期値に戻す\\
-\midrule
-2&\textbf{パラメータ・需要・供給}\\
-&コスト・速度・CO\textsubscript{2}係数や需要量を変更。エラーは赤表示\\
-\midrule
-3&\textbf{ユートピア点・ナディア点}\\
-&各目的の最良値とパレート上の最悪値\\
-\midrule
-4&\textbf{パレートフロント・ε選択}\\
-&点の色はCO\textsubscript{2}。スライダーで解を切り替え\\
-\midrule
-5&\textbf{地図・輸送一覧}\\
-&港からDCへの道路・鉄道フローを表示\\
+1 & \hl{$\varepsilon$制約法の設定}\newline 主目的、点数、計算、初期値に戻す\\
+2 & \hl{パラメータ・需要・供給}\newline コスト・速度・CO\textsubscript{2}係数や需要量を変更。エラーは赤表示\\
+3 & \hl{ユートピア点・ナディア点}\newline 各目的の最良値とパレート上の最悪値\\
+4 & \hl{パレートフロント・$\varepsilon$選択}\newline 点の色はCO\textsubscript{2}。スライダーで解を切り替え\\
+5 & \hl{地図・輸送一覧}\newline 港からDCへの道路・鉄道フローを表示\\
 \bottomrule
 \end{tabular}
 % 入力エラー時の動き（赤表示・再計算が必要）は「アプリの使い方」のページで説明する
@@ -204,7 +184,7 @@
 % =====================================================
 \section{問題設定とモデル}
 
-\begin{frame}[shrink=3]{問題設定：4港から30DCへ、2つの輸送モード}
+\begin{frame}{問題設定：4港から30DCへ、2つの輸送モード}
 \begin{columns}[T,totalwidth=\textwidth]
 \begin{column}{0.50\textwidth}
 \begin{block}{4港から30DCへ合計15,000トン}
@@ -217,7 +197,7 @@ Oakland & 2,000 t\\
 \textbf{合計} & \textbf{15,000 t}
 \end{tabular}
 \end{block}
-\scriptsize 各DCの需要量の合計も15,000トン。
+\footnotesize 各DCの需要量の合計も15,000トン。\par\vspace{1mm}\hl{題材}：MIT SCM.275x 演習09「多目的最適化（$\varepsilon$制約法）」（後半の問題）
 \end{column}
 \begin{column}{0.47\textwidth}
 \begin{block}{道路のみ}
@@ -226,21 +206,20 @@ Oakland & 2,000 t\\
 \vspace{1mm}
 \begin{block}{鉄道＋道路}
 \pill{RailGreen}{RAIL}\quad \textbf{安い・CO\textsubscript{2}が少ない・遅い}\\
-\scriptsize ターミナルで1.5日待つ
+\footnotesize ターミナルで1.5日待つ
 \end{block}
 \end{column}
 \end{columns}
 \vfill
-\begin{alertblock}{鉄道ターミナルの簡略化}
-各DCは直線距離で最も近い1か所の鉄道ターミナルを使用する（12ターミナルから固定）。
-\end{alertblock}
+\ketsuron{\hl{鉄道ターミナルの簡略化}\quad 各DCは測地線距離（地図上の最短距離）で最も近い1か所の鉄道ターミナルを使う（12か所から固定）。}
 \end{frame}
 
-\begin{frame}[shrink=5]{最適化モデル①：記号とデータ}
+{\lightframe
+\begin{frame}{最適化モデル①：記号とデータ}
 \begin{columns}[T,totalwidth=\textwidth]
 \begin{column}{0.48\textwidth}
 \begin{block}{集合}
-\scriptsize
+\footnotesize
 \begin{tabular}{>{\bfseries}l l}
 $P$ & 港の集合（4港）\\
 $D$ & 配送センターの集合（30箇所）\\
@@ -248,93 +227,125 @@ $T$ & 輸送モード（road-only / rail-road）
 \end{tabular}
 \end{block}
 \begin{block}{決定変数}
-\[
-x_{pdt}\ge0
-\]
-\scriptsize
-港 $p$ からDC $d$ へモード $t$ で運ぶ量（トン）。連続変数なので分割輸送も可能。
+\footnotesize
+$x_{pdt}\ge0$：港 $p$ からDC $d$ へモード $t$ で運ぶ量（トン）。連続変数なので分割輸送も可能。
 \end{block}
 \end{column}
 \begin{column}{0.48\textwidth}
 \begin{block}{パラメータ}
-\scriptsize
+\footnotesize
 \begin{tabular}{>{\bfseries}l l}
 $q_d$ & DC $d$ の需要量（トン）\\
 $s_p$ & 港 $p$ の供給量（トン）\\
 $Q$ & 総需要 $Q=\sum_{d}q_d=15{,}000$\\
-$c_{pdt}$ & 1トンあたりの輸送コスト\\
+$c_{pdt}$ & 1トンあたりの運賃（\$/t）\\
 $\tau_{pdt}$ & 1トンあたりの所要日数\\
 $e_{pdt}$ & 1トンあたりのCO\textsubscript{2}排出量
 \end{tabular}
 \end{block}
 \end{column}
 \end{columns}
-\vspace{2mm}
-\begin{alertblock}{目的と評価指標}
-最適化するのはコスト $c_{pdt}$ と所要日数 $\tau_{pdt}$。
-$e_{pdt}$ は目的関数に入れず、選ばれた輸送量から結果としてCO\textsubscript{2}を集計する。
-\end{alertblock}
+\ketsuron{\hl{目的と評価指標}\quad 最適化するのは総輸送コスト（運賃 $c_{pdt}$ の合計）と平均所要日数（$\tau_{pdt}$）。 $e_{pdt}$ は目的関数に入れず、選ばれた輸送量から結果としてCO\textsubscript{2}を集計する。}
 \end{frame}
+}
 
-\begin{frame}[shrink=5]{最適化モデル②：目的関数と制約}
+\begin{frame}{最適化モデル②：目的関数と制約}
 \begin{columns}[T,totalwidth=\textwidth]
-\begin{column}{0.52\textwidth}
-\begin{block}{2つの目的関数}
-\[
-\text{TotalCost}(x)=\sum_{p,d,t}c_{pdt}x_{pdt}
-\]
-\[
-\text{AvgDuration}(x)=\sum_{p,d,t}\frac{\tau_{pdt}}{Q}x_{pdt}
-\]
+\begin{column}{0.48\textwidth}
+\begin{block}{2つの目的関数（どちらも最小化）}
+\vspace{-2mm}
+\begin{align*}
+\text{TotalCost}(x)&=\textstyle\sum_{p,d,t}c_{pdt}\,x_{pdt}\\
+\text{AvgDuration}(x)&=\textstyle\sum_{p,d,t}\frac{\tau_{pdt}}{Q}\,x_{pdt}
+\end{align*}
+\end{block}
+\begin{block}{目的の定義}
 \scriptsize
-平均所要日数は、各経路の日数を輸送量で重み付けして総需要 $Q$ で割った\textbf{輸送量加重平均}。
+\hl{総輸送コスト}：運賃の合計。$c_{pdt}$ は区間ごとに $\max$(単価×距離, 最低料金)、鉄道＋道路は2区間の和。積み替え・保管・在庫・時間価値は含まない。\par
+\hl{平均所要日数}：各経路の日数を輸送量で重み付けして総需要 $Q$ で割った\textbf{輸送量加重平均}。
 \end{block}
 \end{column}
-\begin{column}{0.44\textwidth}
+\begin{column}{0.48\textwidth}
 \begin{block}{制約}
-\[
-\sum_{p,t}x_{pdt}\ge q_d\quad(\forall d)
-\]
-\scriptsize 各DCの需要を満たす。
-\[
-\sum_{d,t}x_{pdt}\le s_p\quad(\forall p)
-\]
-\scriptsize 各港の供給量を超えて出荷しない。
-\[
-x_{pdt}\ge0
-\]
-\scriptsize 負の輸送量は認めない。
+\vspace{-2mm}
+\begin{align*}
+\textstyle\sum_{p,t}x_{pdt}&\ge q_d\quad(\forall d)\\
+\textstyle\sum_{d,t}x_{pdt}&\le s_p\quad(\forall p)\\
+x_{pdt}&\ge0
+\end{align*}
+\footnotesize
+上から、各DCの需要を満たす／各港の供給量を超えて出荷しない／負の輸送量は認めない。
 \end{block}
 \end{column}
 \end{columns}
-\vspace{2mm}
-\begin{center}
-\textbf{目的関数・制約・変数がすべて線形 $\Rightarrow$ 線形計画問題}（高速に厳密解が得られる）
-\end{center}
+\ketsuron{目的関数・制約・変数がすべて線形 $\Rightarrow$ \hl{線形計画問題}（高速に厳密解が得られる）}
 \end{frame}
 
 % =====================================================
-% Part 3: ε制約法
+% Part 3: $\varepsilon$制約法
 % =====================================================
-\section{ε制約法}
+\section{$\varepsilon$制約法}
 
-\begin{frame}[shrink=10]{ε制約法のしくみ：片方を目的に、片方を上限に}
+\begin{frame}{パレート最適とは：どちらも悪くならずに良くできない解}
+\begin{columns}[T,totalwidth=\textwidth]
+\begin{column}{0.50\textwidth}
+\centering
+\begin{tikzpicture}[scale=0.85,>=stealth,font=\scriptsize]
+  \def\front{(0.8,3.6) .. controls (1.2,1.5) and (2.8,0.95) .. (4.7,0.85)}
+  % 実現できる解の範囲
+  \fill[BlueLight!15] \front -- (4.9,3.9) -- (0.8,3.9) -- cycle;
+  % A（フロント上の点）
+  \path \front node[pos=0.33,inner sep=0pt] (A) {};
+  % A に支配される領域
+  \fill[RoadOrange!18] (A) rectangle (4.9,3.9);
+  \draw[RoadOrange,dashed] (A |- 0,3.9) -- (A) -- (4.9,0 |- A);
+  \node[RoadOrange] at (3.9,3.55) {A に支配される範囲};
+  \node[MidGray,align=center] at (1.45,3.45) {実現できる解};
+  % 軸
+  \draw[->] (0,0) -- (5.2,0) node[below left] {コスト};
+  \draw[->] (0,0) -- (0,4.2) node[left] {日数};
+  % フロント
+  \draw[BlueMain,line width=1.5pt] \front;
+  \node[BlueMain,above] at (4.3,0.95) {パレートフロント};
+  % 点
+  \fill[BlueMain] (A) circle (2.6pt);
+  \node[BlueMain,below left] at (A) {A};
+  \fill[MidGray] (3.2,2.7) circle (2.4pt) node[right,text=MidGray] {B（A より高くて遅い）};
+  \fill[RailGreen] (0.8,0.85) circle (2.4pt) node[below right,text=RailGreen] {ユートピア点（実現できない）};
+\end{tikzpicture}
+\end{column}
+\begin{column}{0.47\textwidth}
+\begin{block}{定義（2目的とも最小化）}
+\footnotesize
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item \hl{支配}：A が B より\textbf{コストも日数も同じか良く}、どちらかは\textbf{真に良い}
+\item \hl{パレート最適解}：どの解にも支配されない解（図の A）
+\item \hl{パレートフロント}：パレート最適解を目的値で並べた曲線
+\end{itemize}
+\end{block}
+{\footnotesize\hl{$\varepsilon$制約法}：コストに上限を置いて日数を最小化した解はフロント上の点（最適解が1つならパレート最適）。上限を動かすとフロントをなぞれる。\par}
+\end{column}
+\end{columns}
+\ketsuron{フロント上では\hl{一方を良くすると他方が必ず悪くなる}。どの点を選ぶかは\hl{意思決定}で決める}
+\end{frame}
+
+\begin{frame}{$\varepsilon$制約法のしくみ：片方を目的に、片方を上限に}
 \begin{columns}[T,totalwidth=\textwidth]
 \begin{column}{0.46\textwidth}
 \centering
-\begin{tikzpicture}[scale=0.60,>=stealth,font=\scriptsize]
+\begin{tikzpicture}[scale=0.5,>=stealth,font=\scriptsize]
   \coordinate (origin) at (0,0);
   \coordinate (top) at (0,4.0);
   % axes
   \draw[->] (0,0) -- (4.9,0) node[right] {コスト};
-  \draw[->] (0,0) -- (0,4.3) node[above] {日数};
+  \draw[->] (0,0) -- (0,4.3) node[left] {日数};
   % Pareto front
   \draw[TitleBlue,line width=1.3pt]
     (0.8,3.6) .. controls (1.2,1.6) and (2.6,1.0) .. (4.2,0.9)
     node[pos=0.5,inner sep=0pt] (m) {};
   % utopia / nadir
-  \node[circle,fill=RailGreen,inner sep=2pt,label={[text=RailGreen]above right:ユートピア}] at (0.8,0.9) {};
-  \node[circle,fill=MidGray,inner sep=2pt,label={[text=MidGray]below left:ナディア}] at (4.2,3.6) {};
+  \node[circle,fill=RailGreen,inner sep=2pt,label={[text=RailGreen]below right:ユートピア}] at (0.8,0.9) {};
+  \node[circle,fill=MidGray,inner sep=2pt,label={[text=MidGray]right:ナディア}] at (4.2,3.6) {};
   % cost cap
   \draw[RoadOrange,thick,dashed] (m |- origin) -- (m |- top)
     node[above,text=RoadOrange,align=center] {コスト上限\\$C^U+\varepsilon(C^N-C^U)$};
@@ -350,20 +361,23 @@ x_{pdt}\ge0
 \end{tikzpicture}
 \begin{block}{定式化（主目的＝平均所要日数）}
 \scriptsize
-{\centering
-$\min\ \text{AvgDuration}(x)\quad
-\text{s.t.}\ \text{TotalCost}(x)\le C^U+\varepsilon(C^N-C^U)$\par}
+\setlength{\abovedisplayskip}{2pt}\setlength{\belowdisplayskip}{2pt}
+\vspace{-2mm}
+\begin{align*}
+\min\ & \text{AvgDuration}(x)\\
+\text{s.t.}\ & \text{TotalCost}(x)\le C^U+\varepsilon(C^N-C^U)
+\end{align*}
 さらに需要・供給制約を加える。$\varepsilon=0$ でコスト最小、$\varepsilon=1$ で日数最短。
 \end{block}
 \end{column}
 \begin{column}{0.50\textwidth}
 \begin{block}{考え方}
-\scriptsize
+\footnotesize
 主目的を1つだけ最小化し、もう片方は「上限 $\varepsilon$ 以下」という制約にする。上限を少しずつ緩めて繰り返し解くと、トレードオフ曲線が描ける。
 \end{block}
-\begin{enumerate}\scriptsize
+\begin{enumerate}\footnotesize
 \setlength{\itemsep}{0pt}\setlength{\topsep}{2pt}
-\item 各目的を単独で最小化（ユートピア点・ナディア点を得る）
+\item 各目的の最良値（ユートピア点）と、もう片方の値（ナディア点）を求める
 \item 値を $[0,1]$ に正規化
 \item 主目的（日数）を最小化
 \item コストを上限 $C^U+\varepsilon(C^N-C^U)$ で制約
@@ -373,14 +387,15 @@ $\min\ \text{AvgDuration}(x)\quad
 \end{columns}
 \end{frame}
 
-\begin{frame}[shrink=10]{ユートピア点とナディア点：$\varepsilon$ の範囲を決める}
+\begin{frame}{ユートピア点とナディア点：$\varepsilon$ の範囲を決める}
 % 画面画像は横長（約9:1）なので、段組みの外に横幅いっぱいで置く
 \centering
 \includegraphics[width=\textwidth]{\imgdir/utopia_nadir.png}\par
 \vspace{-1mm}
 \begin{columns}[T,totalwidth=0.97\textwidth]
 \begin{column}{0.50\textwidth}
-\centering\scriptsize
+\centering\footnotesize
+\renewcommand{\arraystretch}{0.95}
 \begin{tabular}{lr}
 \toprule
 \rowcolor{LightBlue}
@@ -404,12 +419,15 @@ $\min\ \text{AvgDuration}(x)\quad
 \scriptsize
 コスト差 \$501,102（約38.2\%）／日数差 2.82日（約53\%）
 \end{alertblock}
-\begin{block}{正規化}
+\begin{block}{定義と正規化}
+\scriptsize
+\setlength{\abovedisplayskip}{1pt}\setlength{\belowdisplayskip}{0pt}
+\hl{ユートピア点}（理想点）：各目的の最良値の組\par
+\hl{ナディア点}：\textbf{パレート最適解の中で}の最悪値の組\par
+\vspace{-1mm}
 \[
 \bar f(x)=\frac{f(x)-f^U}{f^N-f^U}\in[0,1]
 \]
-\scriptsize
-$\bar f=0$：ユートピア側、$\bar f=1$：ナディア側。単位の違うコストと日数を揃え、$\varepsilon$ を0〜1で制御できる。
 \end{block}
 \end{column}
 \end{columns}
@@ -420,8 +438,10 @@ $\bar f=0$：ユートピア側、$\bar f=1$：ナディア側。単位の違う
 % =====================================================
 \section{結果}
 
-\begin{frame}[shrink=3]{結果：$\varepsilon$ ごとのコスト・日数・CO\textsubscript{2}（主目的＝日数）}
-\scriptsize
+\begin{frame}{結果：$\varepsilon$ ごとのコスト・日数・CO\textsubscript{2}（主目的＝日数）}
+\footnotesize
+\renewcommand{\arraystretch}{0.82}
+\vspace*{-2mm}
 \begin{center}
 \begin{tabular}{c r r r c c}
 \toprule
@@ -440,47 +460,86 @@ $\varepsilon$ & コスト & 平均日数 & CO\textsubscript{2} & 道路 & 鉄道
 1.0 & \$1,812,413 & 2.50日 & 3,272t & 100.0\% & 0.0\%\\
 \bottomrule
 \end{tabular}
+\par{\scriptsize\color{BlueText!65} ※ $\varepsilon=0$ のコストが $C^U$（\$1,311,311）と\$1違うのは、数値誤差対策でコスト上限を相対 $10^{-7}$ 緩めて解くため\par}
 \end{center}
-\vspace{1mm}
-\begin{alertblock}{読み方}
-$\varepsilon=0$ は安いが遅い端、$\varepsilon=1$ は速いが高い端（間隔0.1）。水色の行（$\varepsilon=0.1\text{〜}0.3$）は日数が最も大きく縮む区間。
-\end{alertblock}
+\vspace{-3mm}
+\ketsuron{\hl{読み方}\quad $\varepsilon=0$ は安いが遅い端、$\varepsilon=1$ は速いが高い端。水色の行（$\varepsilon=0.1\text{〜}0.3$）は日数が最も大きく縮む区間。}
 \end{frame}
 
-\begin{frame}[shrink=3]{パレートフロント：読み方のポイント}
+\begin{frame}{パレートフロント：読み方のポイント}
 \begin{columns}[T,totalwidth=\textwidth]
 \begin{column}{0.50\textwidth}
 \includegraphics[width=\linewidth,height=0.58\textheight,keepaspectratio]{\imgdir/pareto_front.png}
-\begin{alertblock}{収穫逓減}
-$\varepsilon$ が0.1増えるたびコストは約+\$50,110。\\
-1日短縮の追加コストは\textbf{約\$6万/日 $\to$ 約\$31万/日}（5倍超）。
-\end{alertblock}
+\ketsuron{\hl{収穫逓減}\quad $\varepsilon$ が0.1増えるたびコストは約+\$50,110。 1日短縮の追加コストは\hl{約\$6万/日 $\to$ 約\$32万/日}（5倍超）。}
 \end{column}
 \begin{column}{0.47\textwidth}
-% 箇条書きの中はテンプレートで \small になるため、\scriptsize は enumerate の中に書く
+% 箇条書きの中はテンプレートで \small になるため、\footnotesize は enumerate の中に書く
 \begin{enumerate}\scriptsize
 \setlength{\itemsep}{1pt}\setlength{\topsep}{0pt}
-\item \textbf{曲線は右下がり}\\
+\item \hl{曲線は右下がり}\\
 左上は安いが遅く、右下は速いが高い。曲線上の点はどれも最適で、方針によって選ぶ。曲線より左下は実現できない。
-\item \textbf{最初の追加予算ほど効く}\\
+\item \hl{最初の追加予算ほど効く}\\
 追加コスト全体（\$501,102）の30\%を使う $\varepsilon=0.3$ で、日数の短縮幅2.82日のうち約54\%（1.53日）を獲得。最後の区間（0.9$\to$1.0）はわずか0.16日。
-\item \textbf{速くするほどCO\textsubscript{2}が増える}\\
+\item \hl{速くするほどCO\textsubscript{2}が増える}\\
 鉄道割合は65.9\%$\to$0\%、CO\textsubscript{2}は1,151t$\to$3,272t（約2.8倍）。点の濃さがCO\textsubscript{2}を示す。
-\item \textbf{鉄道が最後まで残るのはTacoma発}\\
+\item \hl{鉄道が最後まで残るのはTacoma発}\\
 $\varepsilon=0.5$ ではTacoma港からの鉄道輸送2,451tだけが残り、他の港は道路のみ。
 \end{enumerate}
 \end{column}
 \end{columns}
 \end{frame}
 
-\begin{frame}[shrink=3]{代表解の比較：$\varepsilon=0$、0.5、1}
+\begin{frame}{なぜ収穫逓減になるのか：フロントは凸の折れ線}
+\begin{columns}[T,totalwidth=\textwidth]
+\begin{column}{0.52\textwidth}
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=\linewidth, height=4.6cm,
+  ybar, bar width=7pt,
+  ymin=0, ymax=36,
+  xlabel={$\varepsilon$ の区間}, ylabel={万ドル／日},
+  xtick=data,
+  xticklabels={0--.1,,.2--.3,,.4--.5,,.6--.7,,.8--.9,},
+  tick label style={font=\scriptsize}, label style={font=\scriptsize},
+  nodes near coords, nodes near coords style={font=\tiny},
+  point meta=explicit symbolic,
+  axis lines*=left, ymajorgrids, grid style={BlueLight!30},
+  enlarge x limits=0.06,
+]
+\addplot[fill=BlueMain!70,draw=none] coordinates {
+  (1,6.0)[6.0] (2,12.0)[12.0] (3,17.7)[17.7] (4,23.4)[23.4] (5,25.4)[25.4]
+  (6,26.4)[26.4] (7,27.0)[27.0] (8,28.5)[28.5] (9,30.8)[30.8] (10,31.9)[31.9]};
+\end{axis}
+\end{tikzpicture}\par
+{\scriptsize 1日短縮あたりの追加コスト（各区間でコスト $+\$50{,}110$）\par}
+\end{column}
+\begin{column}{0.45\textwidth}
+\begin{block}{線形計画の性質}
+\footnotesize
+コスト上限 $C$ での最短日数 $D(C)$ は、LP では\hl{凸で区分線形}（折れ線）。
+\end{block}
+\begin{block}{意味}
+\footnotesize
+\begin{itemize}\setlength{\itemsep}{1pt}
+\item 傾き $-D'(C)$（1ドルで減る日数）は、凸なので\hl{予算を足すほど小さい}
+\item その逆数（1日短縮の追加コスト）は\hl{必ず増える}（左図）
+\item 傾き＝コスト上限の\hl{双対変数}
+\end{itemize}
+\end{block}
+\end{column}
+\end{columns}
+\ketsuron{収穫逓減は偶然ではなく、\hl{LPのパレートフロントが凸であることから必ず起きる}}
+\end{frame}
+
+\begin{frame}{代表解の比較：$\varepsilon=0$、0.5、1}
 \begin{columns}[T,totalwidth=\textwidth]
 \begin{column}{0.31\textwidth}
 \centering
 \textbf{$\varepsilon=0$（コスト最小）}\\
 \includegraphics[width=\linewidth,height=0.46\textheight,keepaspectratio]{\imgdir/epsilon_result_0.png}
 \vspace{2mm}
-\scriptsize
+\footnotesize
 \begin{tabular}{lr}
 コスト & \$1,311,312\\
 平均日数 & 5.32日\\
@@ -493,7 +552,7 @@ CO\textsubscript{2} & 1,151t\\
 \textbf{$\varepsilon=0.5$（中間）}\\
 \includegraphics[width=\linewidth,height=0.46\textheight,keepaspectratio]{\imgdir/epsilon_result_0.5.png}
 \vspace{2mm}
-\scriptsize
+\footnotesize
 \begin{tabular}{lr}
 コスト & \$1,561,862\\
 平均日数 & 3.38日\\
@@ -506,7 +565,7 @@ CO\textsubscript{2} & 2,386t\\
 \textbf{$\varepsilon=1$（日数最短）}\\
 \includegraphics[width=\linewidth,height=0.46\textheight,keepaspectratio]{\imgdir/epsilon_result_1.png}
 \vspace{2mm}
-\scriptsize
+\footnotesize
 \begin{tabular}{lr}
 コスト & \$1,812,413\\
 平均日数 & 2.50日\\
@@ -516,12 +575,10 @@ CO\textsubscript{2} & 3,272t\\
 \end{column}
 \end{columns}
 \vfill
-\begin{alertblock}{注}
-主目的は平均所要日数。同じ $\varepsilon=0.5$ でも総コストを主目的にすると別の点（\$1,435,456・3.91日）になる（付録参照）。
-\end{alertblock}
+\ketsuron{\hl{注}\quad 主目的は平均所要日数。同じ $\varepsilon=0.5$ でも総輸送コストを主目的にすると別の点（\$1,435,456・3.91日）になる（付録参照）。}
 \end{frame}
 
-\begin{frame}[shrink=3]{地図で見る両端の輸送計画}
+\begin{frame}{地図で見る両端の輸送計画}
 \begin{columns}[T,totalwidth=\textwidth]
 \begin{column}{0.48\textwidth}
 \centering
@@ -537,13 +594,11 @@ CO\textsubscript{2} & 3,272t\\
 \end{column}
 \end{columns}
 \vfill
-\begin{alertblock}{環境への代償}
-所要日数を短縮するほど鉄道割合が減り、CO\textsubscript{2}は約\textbf{2.8倍}になる。
-\end{alertblock}
+\ketsuron{\hl{環境への代償}\quad 所要日数を短縮するほど鉄道割合が減り、CO\textsubscript{2}は約\hl{2.8倍}になる。}
 \end{frame}
 
-\begin{frame}[shrink=3]{意思決定の指針：どの $\varepsilon$ を選ぶか}
-\scriptsize
+\begin{frame}{意思決定の指針：どの $\varepsilon$ を選ぶか}
+\footnotesize
 \begin{center}
 \begin{tabular}{>{\bfseries}l c r r r}
 \toprule
@@ -560,7 +615,7 @@ CO\textsubscript{2} & 3,272t\\
 \begin{columns}[T,totalwidth=\textwidth]
 \begin{column}{0.48\textwidth}
 \begin{block}{1日短縮あたりの追加コスト}
-\scriptsize
+\footnotesize
 \begin{itemize}
 \item $\varepsilon=0\to0.3$：+\$150,330で1.53日短縮（約\$10万/日）
 \item $\varepsilon=0.3\to1.0$：+\$350,771で1.29日短縮（約\$27万/日）
@@ -568,48 +623,43 @@ CO\textsubscript{2} & 3,272t\\
 \end{block}
 \end{column}
 \begin{column}{0.48\textwidth}
-\begin{alertblock}{使い方}
-\scriptsize
-「1日の短縮に\$10万を払えるか」という基準があれば、その金額に合う点がそのまま選べる。目安は表示値から求めたもので、最終判断は業務上の納期価値による。
-\end{alertblock}
+\ketsuron{\hl{使い方}\quad 「1日の短縮に\$10万を払えるか」という基準があれば、その金額に合う点がそのまま選べる。目安は表示値から求めたもので、最終判断は業務上の納期価値による。}
 \end{column}
 \end{columns}
 \end{frame}
 
 % =====================================================
-\begin{frame}[shrink=5]{結論：安く運ぶと、速くは運べない}
+\begin{frame}{結論：安く運ぶと、速くは運べない}
 \begin{columns}[T,totalwidth=\textwidth]
 \begin{column}{0.31\textwidth}
-\begin{block}{総コスト}
+\begin{block}{総輸送コスト}
 \centering
 {\Large\bfseries +38\%}\\[1mm]
-\scriptsize \$1,311,311 $\to$ \$1,812,413\\（差額 \$501,102）
+\footnotesize \$1,311,311 $\to$ \$1,812,413\\（差額 \$501,102）
 \end{block}
 \end{column}
 \begin{column}{0.31\textwidth}
 \begin{block}{平均所要日数}
 \centering
 {\Large\bfseries 5.32日 $\to$ 2.50日}\\[1mm]
-\scriptsize 約53\%短縮（コスト最小解 $\to$ 日数最短解）
+\footnotesize 約53\%短縮（コスト最小解 $\to$ 日数最短解）
 \end{block}
 \end{column}
 \begin{column}{0.31\textwidth}
 \begin{block}{CO\textsubscript{2}排出量}
 \centering
 {\Large\bfseries 約2.8倍}\\[1mm]
-\scriptsize 1,151t $\to$ 3,272t\\（鉄道が減るため）
+\footnotesize 1,151t $\to$ 3,272t\\（鉄道が減るため）
 \end{block}
 \end{column}
 \end{columns}
 \vspace{3mm}
 \begin{itemize}
 \item 4港から30配送センター（DC）へ\textbf{15,000トン}を運ぶ計画を対象にした
-\item \textbf{ε制約法}で、コストと日数のトレードオフ曲線（パレートフロント）を作成
+\item \textbf{$\varepsilon$制約法}で、コストと日数のトレードオフ曲線（パレートフロント）を作成
 \item 追加コストの\textbf{最初の30\%で、短縮幅の約54\%}を得られる（収穫逓減）
 \end{itemize}
-\begin{alertblock}{このアプリの役割}
-「単一の最適解」ではなく、\textbf{どこまで払ってどこまで速くするか}を選ぶための地図を示す。
-\end{alertblock}
+\ketsuron{\hl{このアプリの役割}\quad 「単一の最適解」ではなく、\hl{どこまで払ってどこまで速くするか}を選ぶための地図を示す。}
 \end{frame}
 
 % Part 5: アプリ
@@ -618,7 +668,7 @@ CO\textsubscript{2} & 3,272t\\
 
 
 
-\begin{frame}[shrink=3]{アプリの構成：画面・API・最適化の3層}
+\begin{frame}{アプリの構成：画面・API・最適化の3層}
 \centering
 \begin{tikzpicture}[
   box/.style={draw=TitleBlue,fill=LightBlue!60,rounded corners=3pt,align=center,
@@ -627,27 +677,47 @@ CO\textsubscript{2} & 3,272t\\
               text width=36mm,minimum height=10mm,font=\scriptsize},
   arr/.style={->,>=stealth,thick,TitleBlue},
   lab/.style={font=\tiny,text=TextNavy,align=center}]
-\node[box] (ui) {\textbf{画面（React）}\\[0.5mm] グラフ：Recharts\\ 地図：Leaflet＋OpenStreetMap};
-\node[box,right=17mm of ui,text width=40mm] (api) {\textbf{API（FastAPI）}\\[0.5mm] /api/network（初期データ）\\ /api/frontier（パレートフロント）\\ /api/solve（指定した $\varepsilon$）};
-\node[box,right=17mm of api] (opt) {\textbf{最適化（AMPL＋HiGHS）}\\[0.5mm] amplpy でデータを渡し\\ 線形計画を解く};
+\node[box,text width=29mm] (ui) {\textbf{画面（React）}\\[0.5mm] グラフ：Recharts\\ 地図：Leaflet＋OpenStreetMap};
+\node[box,right=11mm of ui,text width=42mm] (api) {\textbf{API（FastAPI）}\\[0.5mm] /api/network（初期データ）\\ /api/frontier（パレートフロント）\\ /api/solve（指定した $\varepsilon$）};
+\node[box,right=12mm of api,text width=29mm] (opt) {\textbf{最適化（AMPL＋HiGHS）}\\[0.5mm] amplpy でデータを渡し\\ 線形計画を解く};
 \draw[arr] ([yshift=2mm]ui.east) -- node[lab,above]{入力値} ([yshift=2mm]api.west);
 \draw[arr] ([yshift=-2mm]api.west) -- node[lab,below]{結果（JSON）} ([yshift=-2mm]ui.east);
 \draw[arr] ([yshift=2mm]api.east) -- node[lab,above]{モデル＋データ} ([yshift=2mm]opt.west);
 \draw[arr] ([yshift=-2mm]opt.east) -- node[lab,below]{解} ([yshift=-2mm]api.east);
 \node[pre,below=7mm of api] (net) {\textbf{network.json}\\ 港・DC間の道路・鉄道の距離};
-\node[pre,left=17mm of net] (sc) {\textbf{事前計算（1回だけ）}\\ scgraph で最短経路を計算};
+\node[pre,left=15mm of net] (sc) {\textbf{事前計算（1回だけ）}\\ scgraph で最短経路を計算};
 \draw[arr,MidGray] (sc) -- (net);
 \draw[arr,MidGray] (net) -- node[lab,right]{起動時に読み込む} (api);
 \end{tikzpicture}
 \vspace{2mm}
-\begin{alertblock}{スライダーが待ち時間なしで切り替わる理由}
-\scriptsize
-「計算」のとき、表示する点に加えて $\varepsilon$ を\textbf{0.01刻みにした101点}も、AMPLの集合 $K$ を使って\textbf{1回のソルバー呼び出しでまとめて解いておく}。
-スライダーは計算済みの解を表示するだけなので、待ち時間なしで切り替わる。0.333 など0.01刻みでない値だけは、その1点を追加で解く（約5秒）。
-\end{alertblock}
+\ketsuron{\hl{スライダーが待ち時間なしで切り替わる理由}\quad 「計算」のとき、表示する点に加えて $\varepsilon$ を\hl{0.01刻みにした101点}も、AMPLの集合 $K$ を使って\hl{1回のソルバー呼び出しでまとめて解いておく}。 スライダーは計算済みの解を表示するだけなので、待ち時間なしで切り替わる。0.333 など0.01刻みでない値だけは、その1点を追加で解く（約5秒）。}
 \end{frame}
 
-\begin{frame}[shrink=10]{アプリの使い方}
+\begin{frame}{使用したモデル・ソルバーと計算時間}
+\small
+\begin{tabular}{@{}l l >{\raggedright\arraybackslash}p{7.4cm}@{}}
+\toprule
+役割 & 名前 & 内容\\
+\midrule
+\hl{モデル} & 線形計画（LP） & 1問：変数240（4港×30DC×2モード）、制約35\newline（需要30・供給4・$\varepsilon$制約1）\\
+\hl{モデリング言語} & AMPL（amplpy） & 元教材（gurobipy／MyPuLP）から書き換え\\
+\hl{ソルバー} & HiGHS & AMPL に同梱のオープンソースLPソルバー\\
+\bottomrule
+\end{tabular}
+\vspace{1mm}
+
+\begin{tabular}{@{}l l r@{}}
+\toprule
+操作 & ソルバー呼び出し & 時間（作成PC）\\
+\midrule
+「計算」ボタン & 3回：ユートピア点 → ナディア点 → 101問まとめて & 12〜17秒\\
+0.01刻みでない$\varepsilon$ & 1回 & 約5秒\\
+\bottomrule
+\end{tabular}
+\ketsuron{LP自体は101問でも約0.1秒（scipy の HiGHS で計測した参考値）。時間の大半は\hl{AMPLの起動（1回2〜4秒）}}
+\end{frame}
+
+\begin{frame}{アプリの使い方}
 \begin{columns}[T,totalwidth=\textwidth]
 \begin{column}{0.38\textwidth}
 \includegraphics[width=\linewidth]{\imgdir/settings_panel.png}
@@ -656,7 +726,7 @@ CO\textsubscript{2} & 3,272t\\
 \end{block}
 \end{column}
 \begin{column}{0.59\textwidth}
-\begin{enumerate}
+\begin{enumerate}\small
 \setlength{\itemsep}{1pt}\setlength{\topsep}{0pt}
 \item アプリを開く（起動時は初期値で計算：10〜20秒）
 \item 主目的を選ぶ（初期値は所要日数の最小化）
@@ -674,15 +744,14 @@ CO\textsubscript{2} & 3,272t\\
 % =====================================================
 \section{まとめ}
 
-\begin{frame}[shrink=3]{前提・限界と今後の拡張}
+\begin{frame}{前提・限界と今後の拡張}
 \begin{columns}[T,totalwidth=\textwidth]
 \begin{column}{0.48\textwidth}
 \begin{block}{モデルの前提と限界}
-\scriptsize
-\begin{itemize}
-\item 各DCの鉄道ターミナルは、直線距離で最も近い1か所に固定
+\footnotesize
+\begin{itemize}\setlength{\itemsep}{0pt}
+\item 各DCの鉄道ターミナルは、測地線距離で最も近い1か所に固定
 \item 輸送量は連続量（端数あり）
-\item 港は元データの先頭4港
 \item 距離は事前計算済みの道路・鉄道ネットワークを使用
 \item CO\textsubscript{2}は結果として表示する指標で、目的関数には含めない
 \item 計算時間は1回12〜17秒程度（作成PCでの実測）
@@ -691,8 +760,8 @@ CO\textsubscript{2} & 3,272t\\
 \end{column}
 \begin{column}{0.48\textwidth}
 \begin{block}{今後の拡張案}
-\scriptsize
-\begin{itemize}
+\footnotesize
+\begin{itemize}\setlength{\itemsep}{0pt}
 \item CO\textsubscript{2}を第3の目的に加えた3目的への拡張
 \item DCごとに複数の鉄道ターミナルから選べるようにする
 \item 輸送量を整数化（トラック・コンテナ単位）
@@ -701,27 +770,23 @@ CO\textsubscript{2} & 3,272t\\
 \end{block}
 \end{column}
 \end{columns}
-\vfill
-\begin{alertblock}{注意}
-CO\textsubscript{2}も同時に最小化したわけではない。日数を縮めた結果としてCO\textsubscript{2}が増える。
-\end{alertblock}
+\ketsuron{\hl{注意}\quad CO\textsubscript{2}も同時に最小化したわけではない。日数を縮めた結果としてCO\textsubscript{2}が増える。}
 \end{frame}
 
-\begin{frame}[shrink=3]{まとめ}
+\begin{frame}{まとめ}
 \begin{columns}[T,totalwidth=\textwidth]
 \begin{column}{0.58\textwidth}
-\begin{alertblock}{わかったこと}
+\begin{block}{わかったこと}
 \begin{itemize}
-\item コスト最小（5.32日）と日数最短（\$1.81M）は両立しない
-\item $\varepsilon=0.1\text{〜}0.3$ 付近が費用対効果の高い領域\\
-（+\$15万で日数5.32$\to$3.79日）
-\item 日数を縮めるほど鉄道が減り、CO\textsubscript{2}は最大約2.8倍
+\item コスト最小（5.32日）と日数最短（\$1.81M）は\hl{両立しない}
+\item $\varepsilon=0.1\text{〜}0.3$ 付近が\hl{費用対効果の高い領域}（+\$15万で日数5.32$\to$3.79日）
+\item 日数を縮めるほど鉄道が減り、CO\textsubscript{2}は最大\hl{約2.8倍}
 \end{itemize}
-\end{alertblock}
+\end{block}
 \end{column}
 \begin{column}{0.38\textwidth}
 \begin{block}{アプリで実現したこと}
-\scriptsize
+\footnotesize
 \begin{itemize}
 \item パレートフロントの可視化
 \item 点の選択で地図と輸送量が連動
@@ -731,9 +796,7 @@ CO\textsubscript{2}も同時に最小化したわけではない。日数を縮�
 \end{column}
 \end{columns}
 \vfill
-\begin{center}
-\textbf{意思決定を支えるのは「単一の最適解」ではなく、選択可能なパレート解。}
-\end{center}
+\ketsuron{意思決定を支えるのは「単一の最適解」ではなく、\hl{選択可能なパレート解}}
 \end{frame}
 
 % =====================================================
@@ -742,7 +805,8 @@ CO\textsubscript{2}も同時に最小化したわけではない。日数を縮�
 \appendix
 \section{付録}
 
-\begin{frame}[shrink=3]{付録A：主目的を切り替えたときの $\varepsilon$ 制約}
+{\lightframe
+\begin{frame}{付録A：主目的を切り替えたときの $\varepsilon$ 制約}
 \begin{columns}[T,totalwidth=\textwidth]
 \begin{column}{0.48\textwidth}
 \begin{block}{主目的：平均所要日数}
@@ -754,10 +818,10 @@ CO\textsubscript{2}も同時に最小化したわけではない。日数を縮�
 \text{TotalCost}(x)\le C^U+\varepsilon(C^N-C^U)
 \]
 \end{block}
-\scriptsize $\varepsilon=0$ はコスト最小、$\varepsilon=1$ は日数最短側の端。
+\footnotesize $\varepsilon=0$ はコスト最小、$\varepsilon=1$ は日数最短側の端。
 \end{column}
 \begin{column}{0.48\textwidth}
-\begin{block}{主目的：総コスト}
+\begin{block}{主目的：総輸送コスト}
 \[
 \min\ \text{TotalCost}(x)
 \]
@@ -766,23 +830,21 @@ CO\textsubscript{2}も同時に最小化したわけではない。日数を縮�
 \text{AvgDuration}(x)\le D^U+\varepsilon(D^N-D^U)
 \]
 \end{block}
-\scriptsize 同じパレートフロントを描くが、同じ $\varepsilon$ でも指す点が異なる。
+\footnotesize 同じパレートフロントを描くが、同じ $\varepsilon$ でも指す点が異なる。
 \end{column}
 \end{columns}
 \vfill
-\begin{alertblock}{確認例：$\varepsilon=0.5$}
-所要日数を主目的 $\to$ \$1,561,862・3.38日\\
-総コストを主目的 $\to$ \$1,435,456・3.91日
-\end{alertblock}
+\ketsuron{\hl{確認例：$\varepsilon=0.5$}\quad 所要日数を主目的 $\to$ \$1,561,862・3.38日\newline 総輸送コストを主目的 $\to$ \$1,435,456・3.91日}
 \end{frame}
+}
 
-\begin{frame}[shrink=3]{付録B：単位とパラメータ}
+{\lightframe
+\begin{frame}{付録B：単位とパラメータ}
 \begin{columns}[T,totalwidth=\textwidth]
 \begin{column}{0.48\textwidth}
 \begin{block}{単位と係数}
-\scriptsize
-\begin{itemize}
-\item コストはドル（トン・マイル単価）
+\footnotesize
+\begin{itemize}\setlength{\itemsep}{0pt}
 \item 所要日数は輸送量加重平均。道路・鉄道とも1日8時間稼働
 \item CO\textsubscript{2}排出量はトン
 \item 速度：道路60mph、鉄道35mph
@@ -792,48 +854,40 @@ CO\textsubscript{2}も同時に最小化したわけではない。日数を縮�
 \end{block}
 \end{column}
 \begin{column}{0.48\textwidth}
-\begin{block}{計算の目安}
-\scriptsize
-\begin{itemize}
-\item 1回の計算は12〜17秒程度（作成PC）
-\item 0.01刻みでない $\varepsilon$ は追加で約5秒
+\begin{block}{コスト}
+\footnotesize
+\begin{itemize}\setlength{\itemsep}{0pt}
+\item コスト単価：道路0.10、鉄道0.05（1トン・マイルあたり）
+\item 最低料金：区間ごとに道路25、鉄道45（1トンあたり）
+\item 通貨単位は元問題に記載がなく、ドルと仮定
 \end{itemize}
 \end{block}
 \end{column}
 \end{columns}
 \end{frame}
+}
 
-\begin{frame}[shrink=3]{付録C：用語集}
-\vfill
-\begin{center}
-\footnotesize
-\arrayrulecolor{LightBlue}
-\begin{tabular}{>{\centering\arraybackslash\bfseries\color{TextNavy}}p{0.22\linewidth}>{\raggedright\arraybackslash}p{0.70\linewidth}}
+{\lightframe
+\begin{frame}{付録C：用語集}
+\small
+\begin{tabular}{>{\bfseries}p{0.22\linewidth}>{\raggedright\arraybackslash}p{0.72\linewidth}}
 \toprule
-\rowcolor{LightBlue}
 用語 & 意味\\
 \midrule
 多目的最適化 & 複数の目的（コストと日数）を同時に扱う\\
-\midrule
-ε制約法 & 主目的を最小化し、残りを「上限ε以下」という制約にして繰り返し解く\\
-\midrule
+$\varepsilon$制約法 & 主目的を最小化し、残りを「上限$\varepsilon$以下」という制約にして繰り返し解く\\
 パレート最適解 & どれか1つの目的を悪くしないと、他の目的を良くできない解\\
-\midrule
 パレートフロント & パレート最適解を目的値でグラフにしたトレードオフ曲線\\
-\midrule
 ユートピア点 & 各目的の最良値を組み合わせた理想点。通常は実現できない\\
-\midrule
 ナディア点 & パレート解上で各目的が最も悪くなる値を組み合わせた点\\
-\midrule
-主目的・副目的 & ε制約法で最小化する目的／上限εをかける目的\\
-\midrule
+主目的・副目的 & $\varepsilon$制約法で最小化する目的／上限$\varepsilon$をかける目的\\
 収穫逓減 & 追加量を増やしても、得られる効果がだんだん小さくなること\\
 \bottomrule
 \end{tabular}
-\end{center}
-\vfill
 \end{frame}
+}
 
+{\lightframe
 \begin{frame}[fragile]{付録D：AMPLコード（モデル定義）}
 % 1列では下端からはみ出すため、集合・パラメータ（左）と変数（右）の2列に分ける
 \begin{columns}[T,totalwidth=\textwidth]
@@ -872,8 +926,10 @@ var AvgDuration {k in K} =
 \end{column}
 \end{columns}
 \end{frame}
+}
 
-\begin{frame}[fragile,shrink=8]{付録E：AMPLコード（目的・制約・ε制約）}
+{\lightframe
+\begin{frame}[fragile]{付録E：AMPLコード（目的・制約・$\varepsilon$制約）}
 \begin{lstlisting}[style=amplcode]
 minimize Objective:
   sum {k in K}
@@ -890,21 +946,9 @@ subject to CostCap {k in K}: TotalCost[k] <= cost_cap[k];
 subject to DurationCap {k in K}:
   AvgDuration[k] <= duration_cap[k];
 \end{lstlisting}
-\vspace{1mm}
-\begin{columns}[T,totalwidth=\textwidth]
-\begin{column}{0.48\textwidth}
-\begin{block}{所要日数を主目的}
-$w_{\text{duration}}=1$,\quad
-$\text{TotalCost}\le C^{U}+\varepsilon(C^{N}-C^{U})$
-\end{block}
-\end{column}
-\begin{column}{0.48\textwidth}
-\begin{block}{総コストを主目的}
-$w_{\text{cost}}=1$,\quad
-$\text{AvgDuration}\le D^{U}+\varepsilon(D^{N}-D^{U})$
-\end{block}
-\end{column}
-\end{columns}
+\ketsuron{\hl{所要日数を主目的}\quad $w_{\text{duration}}=1$,\ $\text{TotalCost}\le C^{U}+\varepsilon(C^{N}-C^{U})$\newline
+\hl{総輸送コストを主目的}\quad $w_{\text{cost}}=1$,\ $\text{AvgDuration}\le D^{U}+\varepsilon(D^{N}-D^{U})$}
 \end{frame}
+}
 
 \end{document}
