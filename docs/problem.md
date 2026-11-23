@@ -21,7 +21,7 @@
 
 データは GitHub（`scm275/problem_sets_scm275/multiple_objectives/`）の CSV から読み込む。
 
-### 港（4か所、`ports.csv` の先頭4件）
+### 港（4か所、`ports.csv` の全4件）
 
 | ID | 名称 | 入荷量（供給量）[ton] |
 |---|---|---:|
