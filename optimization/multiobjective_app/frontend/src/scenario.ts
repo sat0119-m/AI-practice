@@ -47,6 +47,13 @@ export function applyScenario(base: Inputs, s: Scenario): Inputs {
         closed.has(id) ? 0 : openTotal > 0 ? v + (moved * v) / openTotal : v,
       ]),
     );
+    // 比率で分けた端数の誤差をなくすため、動いている最後の港に残りを足して合計を元と一致させる
+    const openIds = Object.keys(supply).filter((id) => !closed.has(id));
+    if (openTotal > 0 && openIds.length > 0) {
+      const last = openIds[openIds.length - 1];
+      const others = openIds.slice(0, -1).reduce((a, id) => a + supply[id], 0);
+      supply[last] = moved + openTotal - others;
+    }
   }
 
   return {

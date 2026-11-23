@@ -18,7 +18,10 @@ export default function ResultPanel({ solution: s, bounds, primary }: Props) {
         <div className="stat">
           <div className="stat-label" title={COST_DEFINITION}>
             総輸送コスト
-            <span className="info" aria-label={COST_DEFINITION}>?</span>
+            <span className="info" aria-hidden="true">
+              ?
+            </span>
+            <span className="sr-only">（{COST_DEFINITION}）</span>
             {primary === "cost" ? <span className="tag primary-tag">主目的</span> : <span className="tag">副目的・上限 ε</span>}
           </div>
           <div className="stat-value">{fmtCost(s.cost)}</div>

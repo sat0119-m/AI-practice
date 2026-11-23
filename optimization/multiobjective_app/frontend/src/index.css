@@ -655,6 +655,7 @@ button.link {
 
 /* ---------- 画面の整理：グラフと地図を左右に並べる ---------- */
 .viz-grid {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 16px;
@@ -758,9 +759,6 @@ button.link {
 }
 
 /* 「入力が変わった」「計算中」：結果の上に重ねて表示する（レイアウトをずらさない） */
-.viz-grid {
-  position: relative;
-}
 
 .viz-grid.is-stale > .card,
 .viz-grid.is-busy > .card {
@@ -774,14 +772,19 @@ button.link {
   left: 50%;
   transform: translateX(-50%);
   z-index: 1100; /* 地図（Leaflet）より前面 */
+  max-width: calc(100% - 20px);
   padding: 6px 14px;
   border: 1px solid #e8c766;
   border-radius: 999px;
   background: var(--notice-soft);
   font-size: 13px;
-  white-space: nowrap;
+  text-align: center;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   pointer-events: none;
+}
+
+.viz-overlay.hidden {
+  display: none;
 }
 
 .viz-grid.is-busy .viz-overlay {
@@ -829,12 +832,16 @@ button.primary.needs-recompute {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .flow-dash {
+  .flow-dash,
+  .notice.busy::before {
     animation: none;
   }
+
+  .viz-grid.is-stale > .card,
+  .viz-grid.is-busy > .card {
+    transition: none;
+  }
 }
-
-
 
 /* 用語の定義を示す「?」（マウスを乗せると説明が出る） */
 .info {
@@ -850,4 +857,22 @@ button.primary.needs-recompute {
   font-size: 10px;
   cursor: help;
   vertical-align: 1px;
+}
+
+/* 画面には出さず、読み上げにだけ使うテキスト */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+button.link:disabled {
+  color: var(--text-muted);
+  cursor: default;
 }

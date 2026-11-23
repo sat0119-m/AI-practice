@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { Inputs, Network, Params, Primary } from "../types";
 import { fmtTon } from "../format";
 import { N_POINTS_MAX, N_POINTS_MIN, type Validation } from "../validate";
@@ -49,6 +49,22 @@ const PARAM_GROUPS: { title: string; fields: { key: keyof Params; label: string;
     ],
   },
 ];
+
+/**
+ * 入力エラーがあるときに自動で開く折りたたみ。
+ * open を props で直接渡すと、エラーが消えた瞬間に勝手に閉じるため、開閉は自分で持ち、エラーで開くだけにする。
+ */
+function AutoOpenDetails(props: { forceOpen: boolean; className?: string; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (props.forceOpen) setOpen(true);
+  }, [props.forceOpen]);
+  return (
+    <details className={props.className} open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
+      {props.children}
+    </details>
+  );
+}
 
 const num = (s: string) => (s.trim() === "" ? NaN : Number(s));
 const shown = (v: number) => (Number.isFinite(v) ? v : "");
@@ -123,7 +139,7 @@ export default function ParamPanel(props: Props) {
       {props.scenarioSlot}
 
       {/* デモで触らない細かい入力は「詳細設定」にまとめ、最初は閉じておく（入力エラーがあるときは開く） */}
-      <details className="card advanced" open={hasDetailErrors || undefined}>
+      <AutoOpenDetails className="card advanced" forceOpen={hasDetailErrors}>
         <summary>
           <span>詳細設定</span>
           <small className="muted">グラフ・パラメータ・需要・供給量</small>
@@ -176,7 +192,7 @@ export default function ParamPanel(props: Props) {
             </>
           )}
         </p>
-        <details open={supplyErrors || undefined}>
+        <AutoOpenDetails forceOpen={supplyErrors}>
           <summary>港の供給量（{network.ports.length} 港）</summary>
           <table className="input-table">
             <tbody>
@@ -199,8 +215,8 @@ export default function ParamPanel(props: Props) {
               ))}
             </tbody>
           </table>
-        </details>
-        <details open={demandErrors || undefined}>
+        </AutoOpenDetails>
+        <AutoOpenDetails forceOpen={demandErrors}>
           <summary>配送センターの需要（{network.distribution_centers.length} か所）</summary>
           <table className="input-table">
             <tbody>
@@ -225,9 +241,9 @@ export default function ParamPanel(props: Props) {
               ))}
             </tbody>
           </table>
-        </details>
+        </AutoOpenDetails>
       </section>
-      </details>
+      </AutoOpenDetails>
     </aside>
   );
 }

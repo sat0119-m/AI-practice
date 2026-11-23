@@ -49,6 +49,9 @@ export default function App() {
   // 応答の順番がずれても、最後に出したリクエストの結果だけを使うための番号
   const computeSeq = useRef(0);
   const solveSeq = useRef(0);
+  const computeAbort = useRef<AbortController | null>(null); // 進行中の計算（新しい計算を始めたら中止する）
+  const autoTimer = useRef<number | undefined>(undefined); // 自動計算の待ちタイマー
+  const epsilonRef = useRef(0.5); // 計算し直したあとも、選んでいた ε を保つため
 
   /** 進行中の「この ε で解く」の結果を捨てる（スライダーなどで別の解を選んだとき） */
   const cancelSolve = () => {
@@ -58,19 +61,25 @@ export default function App() {
 
   const compute = useCallback(async (inp: Inputs, prim: Primary, n: number, sc: Scenario) => {
     const id = ++computeSeq.current;
+    window.clearTimeout(autoTimer.current); // 手動で計算したときは、待っている自動計算を取り消す
+    computeAbort.current?.abort(); // 前の計算はもう使わないので中止する
+    const ac = new AbortController();
+    computeAbort.current = ac;
     solveSeq.current++; // 前の結果に対する「この ε で解く」は無効にする
     setSolving(false);
     setComputing(true);
     setError(null);
     try {
-      const result = await fetchFrontier(inp, prim, n);
+      const result = await fetchFrontier(inp, prim, n, ac.signal);
       if (id !== computeSeq.current) return;
       setComputed({ inputs: inp, scenario: sc, primary: prim, nPoints: n, result });
-      setEpsilon(0.5);
-      setEpsText("0.5");
-      setSelected(result.grid[GRID_STEPS / 2]);
+      // 選んでいた ε（0.01 刻みに丸める）の解を表示し続ける
+      const k = Math.round(epsilonRef.current * GRID_STEPS);
+      setEpsilon(k / GRID_STEPS);
+      setEpsText(String(k / GRID_STEPS));
+      setSelected(result.grid[k]);
     } catch (e) {
-      if (id === computeSeq.current) setError((e as Error).message);
+      if (id === computeSeq.current && (e as Error).name !== "AbortError") setError((e as Error).message);
     } finally {
       if (id === computeSeq.current) setComputing(false);
     }
@@ -115,9 +124,11 @@ export default function App() {
       computed.primary !== primary ||
       computed.nPoints !== n;
     if (!changed) return;
-    const t = setTimeout(() => compute(effective, primary, n, scenario), AUTO_COMPUTE_DELAY);
-    return () => clearTimeout(t);
+    autoTimer.current = window.setTimeout(() => compute(effective, primary, n, scenario), AUTO_COMPUTE_DELAY);
+    return () => window.clearTimeout(autoTimer.current);
   }, [computed, effective, scenario, primary, nPointsText, validation, compute]);
+
+  epsilonRef.current = epsilon;
 
   if (!network || !inputs || !effective) {
     return <div className="loading-page">{error ? <p className="error">{error}</p> : "読み込み中…"}</div>;
@@ -261,13 +272,10 @@ export default function App() {
               </div>
               {/* 「入力が変わった」「計算中」は結果の上に重ねて表示し、レイアウトをずらさない */}
               <div className={`viz-grid ${computing ? "is-busy" : stale ? "is-stale" : ""}`}>
-                {(computing || stale) && (
-                  <div className="viz-overlay" role="status">
-                    {computing
-                      ? "AMPL で計算中です…"
-                      : "入力が変わりました。表示中は前回の入力の結果です（「再計算」で更新）"}
-                  </div>
-                )}
+                {/* 読み上げが安定するよう、状態の欄は常に置いて中身だけ変える */}
+                <div className={`viz-overlay ${computing || stale ? "" : "hidden"}`} role="status">
+                  {computing ? "AMPL で計算中です…" : stale ? "入力が変わりました。まもなく自動で計算し直します" : ""}
+                </div>
                 <section className="card">
                   <h2>パレートフロントと ε</h2>
                   <p className="bounds-inline">

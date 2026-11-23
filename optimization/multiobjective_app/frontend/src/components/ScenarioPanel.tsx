@@ -49,18 +49,29 @@ function Choice<T extends number>(props: {
 /** What-if 分析: ボタンで入力を切り替える（「計算」を押すと、このシナリオで計算し直す） */
 export default function ScenarioPanel({ network, effective, scenario: s, onChange, error }: Props) {
   const set = (patch: Partial<Scenario>) => onChange({ ...s, ...patch });
-  const togglePort = (id: string) =>
-    set({ closedPorts: s.closedPorts.includes(id) ? s.closedPorts.filter((p) => p !== id) : [...s.closedPorts, id] });
+  // 停止する港は ports の順に並べる（選んだ順で「変更あり」と判定されたり、表示順が変わったりしないように）
+  const togglePort = (id: string) => {
+    const next = s.closedPorts.includes(id) ? s.closedPorts.filter((p) => p !== id) : [...s.closedPorts, id];
+    set({ closedPorts: network.ports.map((p) => p.ID).filter((p) => next.includes(p)) });
+  };
+  const supplyText = (id: string) => {
+    const v = effective.incoming_flow[id];
+    return Number.isFinite(v) ? fmtTon(v) : "—";
+  };
 
   return (
     <section className="card scenario">
       <div className="card-head">
         <h2>What-if シナリオ</h2>
-        {!isDefaultScenario(s) && (
-          <button type="button" className="link" onClick={() => onChange(DEFAULT_SCENARIO)}>
-            元に戻す
-          </button>
-        )}
+        {/* 押したあとにフォーカスが消えないよう、ボタンは常に置き、戻す必要がないときは無効にする */}
+        <button
+          type="button"
+          className="link"
+          disabled={isDefaultScenario(s)}
+          onClick={() => onChange(DEFAULT_SCENARIO)}
+        >
+          元に戻す
+        </button>
       </div>
       <p className="muted small">条件を変えると、そのシナリオのパレートフロントを自動で計算し直します。</p>
 
@@ -71,9 +82,14 @@ export default function ScenarioPanel({ network, effective, scenario: s, onChang
             const closed = s.closedPorts.includes(p.ID);
             return (
               <label key={p.ID} className={`port-toggle ${closed ? "closed" : ""}`}>
-                <input type="checkbox" checked={closed} onChange={() => togglePort(p.ID)} />
+                <input
+                  type="checkbox"
+                  checked={closed}
+                  onChange={() => togglePort(p.ID)}
+                  aria-label={`${p.name} 港を停止する`}
+                />
                 <span>{p.name}</span>
-                <small>{closed ? "停止" : fmtTon(effective.incoming_flow[p.ID] ?? 0)}</small>
+                <small>{closed ? "停止" : supplyText(p.ID)}</small>
               </label>
             );
           })}
@@ -105,11 +121,8 @@ export default function ScenarioPanel({ network, effective, scenario: s, onChang
         onChange={(v) => set({ railDelayDays: v })}
       />
 
-      {error && (
-        <p className="error-text small" role="alert">
-          {error}
-        </p>
-      )}
+      {/* 読み上げは「計算」ボタンの近くの一覧（role="alert"）で行うので、ここは表示だけ */}
+      {error && <p className="error-text small">{error}</p>}
     </section>
   );
 }
