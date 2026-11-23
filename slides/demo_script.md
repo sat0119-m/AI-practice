@@ -5,15 +5,15 @@
 
 ## 事前準備（発表の前に）
 
-1. AMPL がある Mac でバックエンドを起動する（フロントはビルド済みのものを配信する）。
+1. AMPL がある Mac でバックエンドを起動する（フロントはビルド済みのものを配信する）。ソルバーは `AMPL_SOLVER=gurobi` で Gurobi を使う（授業用ライセンス。付けなければ HiGHS）。
 
    ```sh
    cd optimization/multiobjective_app/frontend && npm run build
-   cd ../backend && AMPL_DIR=/Applications/AMPL uv run --with-requirements requirements.txt uvicorn main:app --port 8000
+   cd ../backend && AMPL_DIR=/Applications/AMPL AMPL_SOLVER=gurobi uv run --with-requirements requirements.txt uvicorn main:app --port 8000
    ```
 
-2. ブラウザで http://localhost:8000/ を開き、計算が終わっていることを確認する（Mac では1秒以内）。
-3. 画面はプロジェクターに合わせて 1280×720 以上にする。左上のシナリオが「なし／×1」になっていることを確認する（違えば「初期値に戻す」）。
+2. ブラウザで http://localhost:8000/ を開き、計算が終わっていることを確認する。サーバー起動後の最初の1回は1秒ほどかかるので、発表前に一度開いておく（2回目以降は約0.2秒。0.01刻みでない ε は約0.1秒）。
+3. 画面はプロジェクターに合わせて 1280×720 以上にする。左の What-if 欄で、港のチェックがすべて外れ、需要 ×1・燃料 ×1・鉄道の遅延「なし」になっていることを確認する（違えば「初期値に戻す」）。
 4. スライドとブラウザをすぐ切り替えられるようにしておく。
 
 ## 手順と話すこと

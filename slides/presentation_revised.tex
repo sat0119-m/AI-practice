@@ -112,7 +112,7 @@
 \item \textbf{問題設定}：何を、どこへ、どう運ぶか
 \item \textbf{パレート最適と最適化モデル}：線形計画としての定式化
 \item \textbf{$\varepsilon$制約法}：2つの目的を同時に扱う方法
-\item \textbf{実装とアプリ}：AMPL＋HiGHS、画面の構成
+\item \textbf{実装とアプリ}：AMPL＋Gurobi、画面の構成
 \item \textbf{実機デモ}
 \item \textbf{結果}：パレートフロントと収穫逓減
 \item \textbf{What-if 分析}：条件が変わったら
@@ -196,7 +196,7 @@ Oakland & 2,000 t\\
   % 理想点（ユートピア点）
   \draw[RailGreen,densely dotted] (0.7,0.8)--(0.7,3.7) (0.7,0.8)--(3.4,0.8);
   \draw[RailGreen,thick,fill=white] (0.7,0.8) circle (2.2pt);
-  \node[RailGreen,anchor=east] at (0.62,0.8) {理想点};
+  \node[RailGreen,anchor=east] at (0.62,0.8) {ユートピア点};
 \end{tikzpicture}\par
 \vspace{1mm}
 {\scriptsize 1点＝1つの輸送計画の（コスト，日数）。\hl{左下ほど良い}（安く・速く）\par}
@@ -286,7 +286,7 @@ x_{pdt}&\ge0
 \end{block}
 \end{column}
 \end{columns}
-\ketsuron{目的関数・制約・変数がすべて線形 $\Rightarrow$ \hl{線形計画問題}（高速に厳密解が得られる）}
+\ketsuron{すべて線形 $\Rightarrow$ \hl{線形計画問題}。凸なので\hl{改善できなくなった点がそのまま最適}（単体法で頂点をたどる）$\Rightarrow$ 高速に厳密解}
 \end{frame}
 
 \begin{frame}{$\varepsilon$制約法のしくみ：片方を目的に、片方を上限に}
@@ -366,8 +366,8 @@ x_{pdt}&\ge0
 ユートピア：最小コスト $C^U$ & \$1,311,311\\
 ユートピア：最短日数 $D^U$ & 2.50日\\
 \midrule
-ナディア：最大コスト $C^N$ & \$1,812,413\\
-ナディア：最長日数 $D^N$ & 5.32日\\
+ナディア：コスト $C^N$（日数最短解） & \$1,812,413\\
+ナディア：日数 $D^N$（コスト最小解） & 5.32日\\
 \bottomrule
 \end{tabular}
 \vspace{1mm}
@@ -404,7 +404,7 @@ x_{pdt}&\ge0
 \midrule
 \hl{モデル} & 線形計画（LP） & 1問：変数240（4港×30DC×2モード）、制約35\newline（需要30・供給4・$\varepsilon$制約1）\\
 \hl{モデリング言語} & AMPL（amplpy） & 元教材（gurobipy／MyPuLP）から書き換え\\
-\hl{ソルバー} & HiGHS & AMPL に同梱のオープンソースLPソルバー\\
+\hl{ソルバー} & Gurobi & 授業用ライセンスの商用ソルバー。オープンソースの HiGHS でも同じ結果を確認\\
 \bottomrule
 \end{tabular}
 \vspace{1mm}
@@ -413,11 +413,11 @@ x_{pdt}&\ge0
 \toprule
 操作 & ソルバー呼び出し & 計算時間\\
 \midrule
-入力の変更（自動で再計算） & 3回（ユートピア点→ナディア点→101問） & 約0.2秒\\
-0.01刻みでない$\varepsilon$ & 1回 & 約0.05秒\\
+入力の変更（自動で再計算） & 3回（ユートピア点→ナディア点→フロント） & 約0.2秒\\
+0.01刻みでない$\varepsilon$ & 1回 & 約0.1秒\\
 \bottomrule
 \end{tabular}
-\ketsuron{LP は小さく（1問 変数240）、\hl{101問を1つにまとめても一瞬で解ける}ので、条件を変えてもすぐに結果が出る}
+\ketsuron{LP は小さく（1問 変数240）、\hl{101問をまとめても一瞬で解ける}ので条件を変えてもすぐ結果が出る}
 \end{frame}
 
 \begin{frame}{アプリの構成：画面・API・最適化の3層}
@@ -429,13 +429,13 @@ x_{pdt}&\ge0
               text width=36mm,minimum height=10mm,font=\scriptsize},
   arr/.style={->,>=stealth,thick,TitleBlue},
   lab/.style={font=\tiny,text=TextNavy,align=center}]
-\node[box,text width=29mm] (ui) {\textbf{画面（React）}\\[0.5mm] グラフ：Recharts\\ 地図：Leaflet＋OpenStreetMap};
-\node[box,right=11mm of ui,text width=42mm] (api) {\textbf{API（FastAPI）}\\[0.5mm] /api/network（初期データ）\\ /api/frontier（パレートフロント）\\ /api/solve（指定した $\varepsilon$）};
-\node[box,right=12mm of api,text width=29mm] (opt) {\textbf{最適化（AMPL＋HiGHS）}\\[0.5mm] amplpy でデータを渡し\\ 線形計画を解く};
+\node[box,text width=27mm] (ui) {\textbf{画面（React）}\\[0.5mm] グラフ：Recharts\\ 地図：Leaflet＋OpenStreetMap};
+\node[box,right=14mm of ui,text width=40mm] (api) {\textbf{API（FastAPI）}\\[0.5mm] /api/network（初期データ）\\ /api/frontier（パレートフロント）\\ /api/solve（指定した $\varepsilon$）};
+\node[box,right=14mm of api,text width=27mm] (opt) {\textbf{最適化}\\ AMPL＋Gurobi\\[0.5mm] amplpy でデータを\\渡して LP を解く};
 \draw[arr] ([yshift=2mm]ui.east) -- node[lab,above]{入力値} ([yshift=2mm]api.west);
-\draw[arr] ([yshift=-2mm]api.west) -- node[lab,below]{結果（JSON）} ([yshift=-2mm]ui.east);
-\draw[arr] ([yshift=2mm]api.east) -- node[lab,above]{モデル＋データ} ([yshift=2mm]opt.west);
-\draw[arr] ([yshift=-2mm]opt.east) -- node[lab,below]{解} ([yshift=-2mm]api.east);
+\draw[arr] ([yshift=-2mm]api.west) -- node[lab,below]{結果\\(JSON)} ([yshift=-2mm]ui.east);
+\draw[arr] ([yshift=2mm]api.east) -- node[lab,above]{モデル\\＋データ} ([yshift=2mm]opt.west);
+\draw[arr] ([yshift=-2mm]opt.west) -- node[lab,below]{解} ([yshift=-2mm]api.east);
 \node[pre,below=7mm of api] (net) {\textbf{network.json}\\ 港・DC間の道路・鉄道の距離};
 \node[pre,left=15mm of net] (sc) {\textbf{事前計算（1回だけ）}\\ scgraph で最短経路を計算};
 \draw[arr,MidGray] (sc) -- (net);
@@ -583,7 +583,6 @@ $\varepsilon=0.5$ ではTacoma港からの鉄道輸送2,451tだけが残り、�
 \begin{itemize}\setlength{\itemsep}{1pt}
 \item 傾き $-D'(C)$（1ドルで減る日数）は、凸なので\hl{予算を足すほど小さい}
 \item その逆数（1日短縮の追加コスト）は\hl{必ず増える}（左図）
-\item 傾き＝コスト上限の\hl{双対変数}
 \end{itemize}
 \end{block}
 \end{column}
@@ -635,7 +634,7 @@ CO\textsubscript{2} & 3,272t\\
 \end{column}
 \end{columns}
 \vfill
-\ketsuron{\hl{注}\quad 主目的は平均所要日数。同じ $\varepsilon=0.5$ でも総輸送コストを主目的にすると別の点（\$1,435,456・3.91日）になる（付録参照）。}
+\ketsuron{\hl{注}\quad 主目的は平均所要日数。同じ $\varepsilon=0.5$ でも総輸送コストを主目的にすると別の点（\$1,435,456・3.91日）になる（付録B参照）。}
 \end{frame}
 }
 
@@ -686,7 +685,7 @@ Houston 港の停止 & \$1,685,987 & 3.60日 & 7.44日 & 78.3\%\\
 \item \hl{Houston 停止}が最も影響大：最小コスト +29\%、最短日数 +1.1日
 \item \hl{燃料の高騰}でコスト最小解の鉄道割合が 65.9\% → 76.0\%
 \item \hl{需要 ×1.5} はコストが1.5倍になるだけ（日数・割合は不変。LPの線形性）
-\item \hl{鉄道の遅延}は鉄道が多いコスト最小側の日数だけを悪化させる
+\item \hl{鉄道の遅延}は、両端ではコスト最小側（鉄道が多い側）の日数だけを悪化させる
 \end{itemize}
 \end{column}
 \end{columns}
@@ -715,7 +714,7 @@ Houston 港の停止 & \$1,685,987 & 3.60日 & 7.44日 & 78.3\%\\
 \footnotesize
 \begin{itemize}
 \item $\varepsilon=0\to0.3$：+\$150,330で1.53日短縮（平均 約\$10万/日）
-\item $\varepsilon=0.3\to1.0$：+\$350,771で1.29日短縮（平均 約\$27万/日）
+\item $\varepsilon=0.3\to1.0$：+\$350,771で1.28日短縮（平均 約\$27万/日）
 \end{itemize}
 \end{block}
 \end{column}
@@ -788,10 +787,10 @@ $v=$\$30万/日 & $\Rightarrow\ \varepsilon=0.8$（2.82日）\\
 \begin{block}{今後の拡張案}
 \footnotesize
 \begin{itemize}\setlength{\itemsep}{0pt}
-\item CO\textsubscript{2}を第3の目的に加えた3目的への拡張
+\item CO\textsubscript{2}を第3の目的に（フロントは2次元の曲線から3次元の曲面に。$\varepsilon$制約法は上限を2つにすれば同じく解ける。CO\textsubscript{2}最小なら936t（$-19\%$）でコスト$+6\%$）
 \item DCごとに複数の鉄道ターミナルから選べるようにする
 \item 輸送量を整数化（トラック・コンテナ単位）
-\item 需要や速度の変動に対する感度分析
+\item 速度・単価などを連続的に動かす系統的な感度分析と、シナリオ同士の重ね比較
 \end{itemize}
 \end{block}
 \end{column}
@@ -817,7 +816,7 @@ $v=$\$30万/日 & $\Rightarrow\ \varepsilon=0.8$（2.82日）\\
 \begin{itemize}
 \item パレートフロントの可視化
 \item 点の選択で地図と輸送量が連動
-\item パラメータ変更と再計算
+\item What-if シナリオ（自動で再計算）
 \end{itemize}
 \end{block}
 \end{column}
@@ -843,7 +842,7 @@ $v=$\$30万/日 & $\Rightarrow\ \varepsilon=0.8$（2.82日）\\
 \item 主目的を選ぶ（初期値は平均所要日数の最小化。副目的に上限 $\varepsilon$）
 \item 必要なら What-if シナリオや「詳細設定」のパラメータを変える（\textbf{0.6秒後に自動で再計算}）
 \item パレートフロント上の点にマウスを乗せて値を確認し、クリックして選択
-\item $\varepsilon$ スライダーで解を切り替える（0.01刻みの101点は計算済みなので即座に切り替わる。0.333などの細かい値は数値欄から入力）
+\item $\varepsilon$ スライダーで解を切り替える（0.01刻みの101点は計算済みなので即座に切り替わる。0.333などの細かい値は数値欄に入れて「この $\varepsilon$ で解く」）
 \item 地図と一覧表で、港・DC・輸送モード・輸送量を確認
 \end{enumerate}
 \begin{block}{実用上のポイント}
