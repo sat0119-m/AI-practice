@@ -8,10 +8,20 @@ import FrontierChart from "./components/FrontierChart";
 import ResultPanel from "./components/ResultPanel";
 import MapView from "./components/MapView";
 import FlowTable from "./components/FlowTable";
+import ScenarioPanel from "./components/ScenarioPanel";
+import {
+  DEFAULT_SCENARIO,
+  applyScenario,
+  describeScenario,
+  isDefaultScenario,
+  scenarioError,
+  type Scenario,
+} from "./scenario";
 
 /** 計算に使った入力（入力を変えたあとは「再計算が必要」と表示するため） */
 interface Computed {
-  inputs: Inputs;
+  inputs: Inputs; // シナリオを当てたあとの入力
+  scenario: Scenario;
   primary: Primary;
   nPoints: number;
   result: FrontierResult;
@@ -19,10 +29,12 @@ interface Computed {
 
 const GRID_STEPS = 100; // スライダーの刻み（0.01）
 const DEFAULT_N_POINTS = 11;
+const AUTO_COMPUTE_DELAY = 600; // 入力を変えてから自動で計算するまでの待ち時間（ミリ秒）
 
 export default function App() {
   const [network, setNetwork] = useState<Network | null>(null);
-  const [inputs, setInputs] = useState<Inputs | null>(null);
+  const [inputs, setInputs] = useState<Inputs | null>(null); // 画面で編集する基準の入力
+  const [scenario, setScenario] = useState<Scenario>(DEFAULT_SCENARIO);
   const [primary, setPrimary] = useState<Primary>("duration");
   const [nPointsText, setNPointsText] = useState(String(DEFAULT_N_POINTS));
   const [computed, setComputed] = useState<Computed | null>(null);
@@ -44,7 +56,7 @@ export default function App() {
     setSolving(false);
   };
 
-  const compute = useCallback(async (inp: Inputs, prim: Primary, n: number) => {
+  const compute = useCallback(async (inp: Inputs, prim: Primary, n: number, sc: Scenario) => {
     const id = ++computeSeq.current;
     solveSeq.current++; // 前の結果に対する「この ε で解く」は無効にする
     setSolving(false);
@@ -53,7 +65,7 @@ export default function App() {
     try {
       const result = await fetchFrontier(inp, prim, n);
       if (id !== computeSeq.current) return;
-      setComputed({ inputs: inp, primary: prim, nPoints: n, result });
+      setComputed({ inputs: inp, scenario: sc, primary: prim, nPoints: n, result });
       setEpsilon(0.5);
       setEpsText("0.5");
       setSelected(result.grid[GRID_STEPS / 2]);
@@ -72,7 +84,7 @@ export default function App() {
       .then((net) => {
         setNetwork(net);
         setInputs(net.defaults);
-        compute(net.defaults, "duration", DEFAULT_N_POINTS);
+        compute(applyScenario(net.defaults, DEFAULT_SCENARIO), "duration", DEFAULT_N_POINTS, DEFAULT_SCENARIO);
       })
       .catch((e: Error) => {
         if (e.name !== "AbortError") setError(e.message);
@@ -80,19 +92,42 @@ export default function App() {
     return () => ac.abort();
   }, [compute]);
 
-  const validation = useMemo(
-    () => (inputs ? validate(inputs, nPointsText) : { fields: {}, messages: [] }),
-    [inputs, nPointsText],
-  );
+  // 計算に使う入力 = 基準の入力にシナリオを当てたもの
+  const effective = useMemo(() => (inputs ? applyScenario(inputs, scenario) : null), [inputs, scenario]);
+  const scenarioErr = network && inputs ? scenarioError(network, inputs, scenario) : null;
+  const validation = useMemo(() => {
+    if (!inputs || !effective) return { fields: {}, messages: [] };
+    // 入力欄のエラーは基準の入力で、計算できるかどうかはシナリオを当てた入力で判定する
+    const base = validate(inputs, nPointsText);
+    const eff = validate(effective, nPointsText);
+    const messages = [...new Set([...base.messages, ...eff.messages, ...(scenarioErr ? [scenarioErr] : [])])];
+    return { fields: base.fields, messages };
+  }, [inputs, effective, nPointsText, scenarioErr]);
 
-  if (!network || !inputs) {
+  // 入力・シナリオ・主目的・点の数が変わったら、少し待ってから自動で計算し直す
+  // （続けて入力したときに毎回ソルバーを呼ばないよう、最後の変更から AUTO_COMPUTE_DELAY だけ待つ）
+  useEffect(() => {
+    if (!computed || !effective || validation.messages.length > 0) return;
+    const n = Number(nPointsText);
+    const changed =
+      JSON.stringify(computed.inputs) !== JSON.stringify(effective) ||
+      JSON.stringify(computed.scenario) !== JSON.stringify(scenario) ||
+      computed.primary !== primary ||
+      computed.nPoints !== n;
+    if (!changed) return;
+    const t = setTimeout(() => compute(effective, primary, n, scenario), AUTO_COMPUTE_DELAY);
+    return () => clearTimeout(t);
+  }, [computed, effective, scenario, primary, nPointsText, validation, compute]);
+
+  if (!network || !inputs || !effective) {
     return <div className="loading-page">{error ? <p className="error">{error}</p> : "読み込み中…"}</div>;
   }
 
   const nPoints = Number(nPointsText);
   const stale =
     computed !== null &&
-    (JSON.stringify(computed.inputs) !== JSON.stringify(inputs) ||
+    (JSON.stringify(computed.inputs) !== JSON.stringify(effective) ||
+      JSON.stringify(computed.scenario) !== JSON.stringify(scenario) ||
       computed.primary !== primary ||
       computed.nPoints !== nPoints);
 
@@ -146,8 +181,8 @@ export default function App() {
   const capLabel =
     computed && b
       ? computed.primary === "duration"
-        ? `総コストの上限 = ${fmtCost(b.utopia_cost + epsilon * (b.nadir_cost - b.utopia_cost))}`
-        : `平均所要日数の上限 = ${fmtDays(b.utopia_duration + epsilon * (b.nadir_duration - b.utopia_duration))}`
+        ? `副目的「総輸送コスト」の上限 = ${fmtCost(b.utopia_cost + epsilon * (b.nadir_cost - b.utopia_cost))}`
+        : `副目的「平均所要日数」の上限 = ${fmtDays(b.utopia_duration + epsilon * (b.nadir_duration - b.utopia_duration))}`
       : "";
   const degenerate =
     b && Math.abs(b.nadir_cost - b.utopia_cost) <= 1e-6 * Math.max(1, b.utopia_cost) &&
@@ -157,10 +192,7 @@ export default function App() {
     <div className="app">
       <header className="header">
         <h1>多目的最適化 ― ε制約法</h1>
-        <p>
-          港から配送センターへの輸送で「道路のみ」と「鉄道＋道路」を選び、総コストと平均所要日数のトレードオフ
-          （パレートフロント）を AMPL で求めます。
-        </p>
+        <p>港から配送センターへ「道路のみ」か「鉄道＋道路」で運ぶとき、総輸送コストと平均所要日数のトレードオフを AMPL で求めます。</p>
       </header>
 
       <div className="layout">
@@ -175,13 +207,24 @@ export default function App() {
           validation={validation}
           onReset={() => {
             setInputs(network.defaults);
+            setScenario(DEFAULT_SCENARIO);
             setPrimary("duration");
             setNPointsText(String(DEFAULT_N_POINTS));
           }}
           onCompute={() => {
-            if (validation.messages.length === 0) compute(inputs, primary, nPoints);
+            if (validation.messages.length === 0) compute(effective, primary, nPoints, scenario);
           }}
           computing={computing}
+          stale={stale}
+          scenarioSlot={
+            <ScenarioPanel
+              network={network}
+              effective={effective}
+              scenario={scenario}
+              onChange={setScenario}
+              error={scenarioErr}
+            />
+          }
         />
 
         <main className="main">
@@ -190,101 +233,111 @@ export default function App() {
               {error}
             </div>
           )}
-          {stale && !computing && (
-            <div className="notice">
-              入力が変わりました。「計算」を押すと新しい入力で計算し直します（表示中の結果は前回の入力のものです）。
-            </div>
-          )}
-          {computing && (
-            <div className="notice busy">
-              AMPL で計算中です…（ユートピア点・ナディア点・パレートフロントの順に、ソルバーを3回呼び出します）
-            </div>
-          )}
+          {/* 起動直後（まだ結果がないとき）だけ、計算中であることを本文に出す */}
+          {computing && !computed && <div className="notice busy">AMPL で計算中です…</div>}
 
           {computed && b && (
             <>
-              <section className="card">
-                <h2>ユートピア点とナディア点</h2>
-                {degenerate && (
-                  <p className="muted small">
-                    ユートピア点とナディア点が一致しました。総コストと平均所要日数を同時に最良にできる解があるため、トレードオフはありません。
-                  </p>
+              {/* シナリオの有無で帯が出たり消えたりすると下がずれるので、帯は常に1行の高さで出す */}
+              <div
+                className={`scenario-banner ${isDefaultScenario(computed.scenario) ? "base" : ""}`}
+                title={describeScenario(network, computed.scenario).join("、") || undefined}
+              >
+                {isDefaultScenario(computed.scenario) ? (
+                  <>
+                    <b>基準</b>
+                    <span className="muted">元問題の条件で計算した結果</span>
+                  </>
+                ) : (
+                  <>
+                    <b>What-if シナリオで計算した結果</b>
+                    {describeScenario(network, computed.scenario).map((t) => (
+                      <span className="chip" key={t}>
+                        {t}
+                      </span>
+                    ))}
+                  </>
                 )}
-                <div className="stats four">
-                  <div className="stat">
-                    <div className="stat-label">総コスト（ユートピア）</div>
-                    <div className="stat-value">{fmtCost(b.utopia_cost)}</div>
+              </div>
+              {/* 「入力が変わった」「計算中」は結果の上に重ねて表示し、レイアウトをずらさない */}
+              <div className={`viz-grid ${computing ? "is-busy" : stale ? "is-stale" : ""}`}>
+                {(computing || stale) && (
+                  <div className="viz-overlay" role="status">
+                    {computing
+                      ? "AMPL で計算中です…"
+                      : "入力が変わりました。表示中は前回の入力の結果です（「再計算」で更新）"}
                   </div>
-                  <div className="stat">
-                    <div className="stat-label">総コスト（ナディア）</div>
-                    <div className="stat-value">{fmtCost(b.nadir_cost)}</div>
-                  </div>
-                  <div className="stat">
-                    <div className="stat-label">平均所要日数（ユートピア）</div>
-                    <div className="stat-value">{fmtDays(b.utopia_duration)}</div>
-                  </div>
-                  <div className="stat">
-                    <div className="stat-label">平均所要日数（ナディア）</div>
-                    <div className="stat-value">{fmtDays(b.nadir_duration)}</div>
-                  </div>
-                </div>
-              </section>
-
-              <section className="card">
-                <h2>パレートフロント</h2>
-                <FrontierChart frontier={computed.result} selected={selected} onSelect={onPointSelect} />
-              </section>
-
-              <section className="card">
-                <h2>ε を選ぶ</h2>
-                <p className="muted small">
-                  {computed.primary === "duration"
-                    ? "平均所要日数を最小化し、正規化した総コストを ε 以下に制限します（0 = コスト最小、1 = 制限なし）。"
-                    : "総コストを最小化し、正規化した平均所要日数を ε 以下に制限します（0 = 日数最短、1 = 制限なし）。"}
-                </p>
-                <div className="eps-row">
-                  <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={1 / GRID_STEPS}
-                    value={epsilon}
-                    onChange={(e) => onSlide(Number(e.target.value))}
-                    aria-label="ε"
+                )}
+                <section className="card">
+                  <h2>パレートフロントと ε</h2>
+                  <p className="bounds-inline">
+                      ユートピア点 {fmtCost(b.utopia_cost)}・{fmtDays(b.utopia_duration)}
+                      <span className="sep">／</span>
+                      ナディア点 {fmtCost(b.nadir_cost)}・{fmtDays(b.nadir_duration)}
+                  </p>
+                  {degenerate && (
+                    <p className="muted small">
+                      ユートピア点とナディア点が一致しました。総輸送コストと平均所要日数を同時に最良にできる解があるため、トレードオフはありません。
+                    </p>
+                  )}
+                  <FrontierChart frontier={computed.result} selected={selected} onSelect={onPointSelect} height={250}
                   />
-                  <form
-                    className="eps-input"
-                    noValidate
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      onSolveExact();
-                    }}
-                  >
-                    <label>
-                      ε =
-                      <input
-                        type="number"
-                        min={0}
-                        max={1}
-                        step="any"
-                        value={epsText}
-                        onChange={(e) => setEpsText(e.target.value)}
-                      />
-                    </label>
-                    <button type="submit" disabled={solving || computing}>
-                      {solving ? "計算中…" : "この ε で解く"}
-                    </button>
-                  </form>
-                </div>
-                <p className="cap">{capLabel}</p>
-                {selected && <ResultPanel solution={selected} bounds={b} primary={computed.primary} />}
-              </section>
+                  <div className="eps-row">
+                    <input
+                      type="range"
+                      min={0}
+                      max={1}
+                      step={1 / GRID_STEPS}
+                      value={epsilon}
+                      onChange={(e) => onSlide(Number(e.target.value))}
+                      aria-label="ε"
+                    />
+                    <form
+                      className="eps-input"
+                      noValidate
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        onSolveExact();
+                      }}
+                    >
+                      <label>
+                        ε =
+                        <input
+                          type="number"
+                          min={0}
+                          max={1}
+                          step="any"
+                          value={epsText}
+                          onChange={(e) => setEpsText(e.target.value)}
+                        />
+                      </label>
+                      <button type="submit" disabled={solving || computing}>
+                        {solving ? "計算中…" : "この ε で解く"}
+                      </button>
+                    </form>
+                  </div>
+                  <p className="cap">
+                    {capLabel}
+                    <span className="muted">
+                      {computed.primary === "duration"
+                        ? "（0 = コスト最小、1 = 日数最短）"
+                        : "（0 = 日数最短、1 = コスト最小）"}
+                    </span>
+                  </p>
+                  {selected && <ResultPanel solution={selected} bounds={b} primary={computed.primary} />}
+                </section>
 
-              <section className="card">
-                <h2>輸送フローの地図</h2>
-                <MapView network={network} solution={selected} />
-                {selected && <FlowTable network={network} solution={selected} />}
-              </section>
+                <section className="card">
+                  <h2>輸送フローの地図</h2>
+                  <MapView
+                    network={network}
+                    solution={selected}
+                    closedPorts={computed.scenario.closedPorts}
+                    speeds={{ road: computed.inputs.params.speed_road, rail: computed.inputs.params.speed_rail }}
+                  />
+                  {selected && <FlowTable network={network} solution={selected} />}
+                </section>
+              </div>
             </>
           )}
         </main>
