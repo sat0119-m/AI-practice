@@ -1,0 +1,592 @@
+% LuaLaTeX でコンパイルする（例: latexmk -lualatex main.tex）
+% 数値は ../slides/presentation_revised.tex，../docs/app_summary.md，../docs/problem.md に基づく
+\documentclass[a4paper,11pt]{ltjsarticle}
+
+\usepackage[margin=22mm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{tikz}
+\usetikzlibrary{positioning}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usepackage[hidelinks]{hyperref}
+\usepackage{url}
+\usepackage{listings}
+\lstset{basicstyle=\ttfamily\scriptsize, columns=fullflexible, keepspaces=true,
+  frame=tb, numbers=left, numberstyle=\tiny, xleftmargin=2em, breaklines=true,
+  commentstyle=\color{black!60}, keywordstyle=\bfseries, morecomment=[l]{\#},
+  morekeywords={set,param,var,minimize,subject,to,s.t.,sum,in,default,Infinity}}
+\renewcommand{\lstlistingname}{リスト}
+\makeatletter\newcommand{\lstcaptype}{\def\@captype{lstlisting}\def\fnum@lstlisting{\lstlistingname\thelstlisting}}\makeatother
+
+\renewcommand{\topfraction}{0.85}
+\renewcommand{\bottomfraction}{0.6}
+\renewcommand{\textfraction}{0.12}
+\renewcommand{\floatpagefraction}{0.75}
+\setcounter{topnumber}{3}
+\setcounter{totalnumber}{5}
+\flushbottom
+\setlength{\textfloatsep}{12pt plus 2pt minus 4pt}
+\setlength{\floatsep}{10pt plus 2pt minus 2pt}
+
+\newcommand{\Pset}{\mathcal{P}}
+\newcommand{\Dset}{\mathcal{D}}
+\newcommand{\Tset}{\mathcal{T}}
+\newcommand{\Kset}{\mathcal{K}}
+\newcommand{\cost}{\mathrm{TotalCost}}
+\newcommand{\dur}{\mathrm{AvgDuration}}
+\newcommand{\COO}{CO\textsubscript{2}}
+\newcommand{\imgdir}{../docs/images}
+
+\title{多目的最適化（$\varepsilon$制約法）による\\ポートからDCへの輸送計画Webアプリ\\[0.5ex]
+\large ―コストと所要日数のトレードオフを地図で可視化する―}
+\author{2523009 恩田梨那\quad 2523019 佐藤美桜\quad 2523023 詹媛媛\\[0.5ex]
+\normalsize データサイエンスAI実践}
+\date{2026年11月}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+物流の計画では，輸送コストを抑えたいという目的と，早く届けたいという目的が対立することが多い．
+本稿では，米国の4港から30か所の配送センター（DC）へ合計15,000トンの貨物を運ぶ問題を題材に，
+「道路のみ」と「鉄道＋道路」の2つの輸送モードの使い分けを，総輸送コストと平均所要日数の2目的の線形計画問題として定式化した．
+これを$\varepsilon$制約法で解き，両目的のトレードオフ曲線（パレートフロント）を求めた．
+モデルは AMPL で記述し，HiGHS で解いた．
+さらに，FastAPI と React（Recharts，Leaflet）を用いて，パラメータを変えて再計算し，パレートフロント上の解を選ぶと地図上の輸送フローが切り替わる Web アプリを作成した．
+初期値では，コスト最小の解（\$1,311,311，5.32日）と日数最短の解（\$1,812,413，2.50日）は両立せず，
+追加コスト\$501,102（約38\%）の最初の30\%で日数の短縮幅2.82日の約54\%が得られるという収穫逓減が見られた．
+また，日数を縮めるほど鉄道の割合が減り，結果指標として集計した\COO{}排出量は1,151トンから3,272トンへ約2.8倍に増えた．
+\end{abstract}
+
+%======================================================================
+\section{はじめに}
+%======================================================================
+現実の意思決定では，最適化したい目的が1つだけとは限らない．
+輸送計画では，トラックは速いが高く\COO{}も多く，鉄道は安く\COO{}も少ないが遅い．
+このとき「最も安い計画」と「最も速い計画」は一般に異なり，どちらか一方を最適化しただけでは，意思決定者が本当に知りたい「いくら払えば何日早くなるか」という情報は得られない．
+
+複数の目的を同時に扱う\textbf{多目的最適化}では，どれか1つの目的を悪くしないと他の目的を良くできない解（\textbf{パレート最適解}）の集まりを求め，その中から意思決定者が方針に合う解を選ぶ\cite{miettinen1999,chankong1983}．
+パレート最適解を目的値の平面に描いたものを\textbf{パレートフロント}という．
+本稿では，パレートフロントを求める代表的な方法である\textbf{$\varepsilon$制約法}\cite{haimes1971}を用いる．
+
+本稿の題材は，MIT SCM.275x（Advanced Supply Chain Systems Planning and Network Design）の演習
+「Multi-Objective Optimization -- Epsilon Constraint Method」である．
+データは同講座の公開リポジトリ（\url{https://github.com/scm275/problem_sets_scm275} の \texttt{multiple\_objectives}）の CSV である．
+元の演習は Python（gurobipy / MyPuLP）で書かれたノートブックであり，われわれはその最適化部分を AMPL\cite{ampl}と HiGHS\cite{highs}に置き換えたうえで，結果を対話的に確かめられる Web アプリに拡張した．
+以下，\ref{sec:problem}節と\ref{sec:model}節で問題と定式化を，\ref{sec:eps}節と\ref{sec:ampl}節で$\varepsilon$制約法とその AMPL による実装（101個の$\varepsilon$制約問題を集合 $K$ でまとめて1回のソルバー呼び出しで解く工夫を含む）を，\ref{sec:app}節で Web アプリを，\ref{sec:result}節と\ref{sec:discussion}節で結果と意思決定の指針を述べる．
+
+%======================================================================
+\section{問題設定}\label{sec:problem}
+%======================================================================
+\subsection{港・配送センター・輸送モード}
+米国の4つの港に届いた貨物を，30か所の DC へ輸送する．
+港の供給量（入荷量）は Los Angeles 3,500トン，Tacoma 4,500トン，Houston 5,000トン，Oakland 2,000トンで，合計15,000トンである．
+DC の需要量は300〜700トンで，合計は供給量の合計と同じ15,000トンである．
+港は元データ（\texttt{ports.csv}）の4港すべてである．
+
+港から DC へは，次の2つの輸送モードのどちらでも運べる．
+\begin{itemize}
+  \item \textbf{道路のみ}（road-only）：港 →（道路）→ DC．
+  \item \textbf{鉄道＋道路}（rail-road）：港 →（鉄道）→ DC の最寄りの鉄道ターミナル →（道路）→ DC．
+\end{itemize}
+鉄道ターミナルは12か所あり，各 DC は，その12か所のうち測地線距離（geopy で計算．道路・鉄道網上の距離ではない）で最も近い1か所 $r(d)$ だけを使うものとした（例えば Portland（d1）は Boise を使う）．これは元の演習と同じ設定である．
+
+\subsection{距離・コスト・排出量・所要日数}
+距離は，Python パッケージ scgraph（2.1.0）の米国高速道路網（\texttt{us\_freeway\_geograph}）と北米鉄道網（\texttt{north\_america\_rail\_geograph}）の上の最短経路として求めた（単位はマイル）．この計算は事前に一度だけ行い，結果を \texttt{network.json} に保存した．
+港 $p$ から DC $d$ への道路距離を $\ell^{\mathrm{road}}_{pd}$，港 $p$ から鉄道ターミナル $r$ への鉄道距離を $\ell^{\mathrm{rail}}_{pr}$，ターミナル $r$ から DC $d$ への道路距離を $\ell^{\mathrm{road}}_{rd}$ とする．
+これらから，1トンあたりの運賃（単位輸送費）$c$，所要日数 $\tau$，\COO{}排出量 $e$ を次のように計算する．
+\begin{align}
+c_{pd,\mathrm{road}} &= \max(0.10\,\ell^{\mathrm{road}}_{pd},\ 25), &
+c_{pd,\mathrm{rail}} &= \max(0.05\,\ell^{\mathrm{rail}}_{p\,r(d)},\ 45) + \max(0.10\,\ell^{\mathrm{road}}_{r(d)\,d},\ 25), \label{eq:cost}\\
+\tau_{pd,\mathrm{road}} &= \frac{\ell^{\mathrm{road}}_{pd}}{60\times 8}, &
+\tau_{pd,\mathrm{rail}} &= \frac{\ell^{\mathrm{rail}}_{p\,r(d)}}{35\times 8} + \frac{\ell^{\mathrm{road}}_{r(d)\,d}}{60\times 8} + 1.5, \label{eq:dur}\\
+e_{pd,\mathrm{road}} &= \frac{0.4}{2204.62}\,\ell^{\mathrm{road}}_{pd}, &
+e_{pd,\mathrm{rail}} &= \frac{0.05}{2204.62}\,\ell^{\mathrm{rail}}_{p\,r(d)} + \frac{0.4}{2204.62}\,\ell^{\mathrm{road}}_{r(d)\,d}. \label{eq:emis}
+\end{align}
+ここで road は道路のみ，rail は鉄道＋道路を表す．
+コストはトン・マイル単価（道路0.10，鉄道0.05）に，距離によらない1トンあたりの最低料金（道路25，鉄道45）を区間ごとに適用したものであり，鉄道＋道路では鉄道区間と道路区間のそれぞれに最低料金を適用して足し合わせる．
+元の演習には通貨単位の記載がなく，本稿では米国の問題であることからドルとみなして表記する．
+
+本稿で単に「コスト」と書くときは，この運賃を輸送量について合計した\textbf{総輸送コスト} $\sum_{p,d,t} c_{pdt}\,x_{pdt}$ を指す（\ref{sec:model}節）．
+総輸送コストに含まれるのは区間ごとの運賃（トン・マイル単価×距離，ただし最低料金を下回らない）だけであり，港や鉄道ターミナルでの積み替え・保管の費用，在庫の保有費用，車両や施設の固定費，輸送の遅れによる損失（時間価値），\COO{}の社会的費用は含まない．
+所要日数の短縮による便益はコストに換算せず，もう1つの目的（平均所要日数）として別に扱う．
+所要日数は，平均速度を道路60マイル/時，鉄道35マイル/時，1日の稼働時間を8時間とし，鉄道ターミナルでの滞留1.5日を加えた．
+\COO{}の排出係数は米議会予算局（CBO）の資料\cite{cbo2022}に基づき，トン・マイルあたり道路0.4ポンド，鉄道0.05ポンドとし，1トン＝2204.62ポンドでトンに換算した．
+これらのパラメータの初期値は元の演習の値であり，Web アプリでは画面から変更できる．
+
+例えば Los Angeles 港から Portland（d1）へは，道路のみでは距離996.17マイル，所要2.08日，コスト99.62/トン，
+鉄道＋道路（Boise 経由，鉄道1,222.72マイル＋道路434.41マイル）では所要6.77日，コスト104.58/トンとなる．
+このように鉄道が必ず安いとは限らない．
+
+%======================================================================
+\section{定式化}\label{sec:model}
+%======================================================================
+定式化で用いる記号を表\ref{tab:notation}にまとめる．
+
+\begin{table}[tbp]
+\centering
+\caption{記号の一覧}\label{tab:notation}
+\small
+\begin{tabular}{ll>{\raggedright\arraybackslash}p{8.6cm}}
+\toprule
+区分 & 記号 & 意味 \\
+\midrule
+\multirow{3}{*}{集合}
+ & $p \in \Pset$ & 港（4港） \\
+ & $d \in \Dset$ & 配送センター（30か所） \\
+ & $t \in \Tset$ & 輸送モード $\{\text{road-only},\ \text{rail-road}\}$ \\
+\midrule
+\multirow{6}{*}{パラメータ}
+ & $q_d$ & DC $d$ の需要量 [トン] \\
+ & $s_p$ & 港 $p$ の供給量 [トン] \\
+ & $Q$ & 総需要量 $Q=\sum_{d}q_d=15{,}000$ \\
+ & $c_{pdt}$ & 1トンあたりの輸送コスト（ドルとみなす）（式\eqref{eq:cost}） \\
+ & $\tau_{pdt}$ & 1トンあたりの所要日数 [日]（式\eqref{eq:dur}） \\
+ & $e_{pdt}$ & 1トンあたりの\COO{}排出量 [トン]（式\eqref{eq:emis}） \\
+\midrule
+変数 & $x_{pdt}\ge 0$ & 港 $p$ から DC $d$ へモード $t$ で運ぶ量 [トン]（連続変数） \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{2つの目的関数と制約}
+目的は総輸送コストと平均所要日数の2つであり，いずれも最小化する．
+\begin{align}
+\cost(x) &= \sum_{p\in\Pset}\sum_{d\in\Dset}\sum_{t\in\Tset} c_{pdt}\,x_{pdt}, \label{eq:f1}\\
+\dur(x) &= \sum_{p\in\Pset}\sum_{d\in\Dset}\sum_{t\in\Tset} \frac{\tau_{pdt}}{Q}\,x_{pdt}. \label{eq:f2}
+\end{align}
+平均所要日数は，各経路の日数を輸送量で重み付けして総需要 $Q$ で割った，1トンあたりの\textbf{輸送量加重平均}である．
+制約は次のとおりである．
+\begin{align}
+& \textstyle\sum_{p\in\Pset}\sum_{t\in\Tset} x_{pdt} \ge q_d && \forall d\in\Dset \label{eq:demand}\\
+& \textstyle\sum_{d\in\Dset}\sum_{t\in\Tset} x_{pdt} \le s_p && \forall p\in\Pset \label{eq:supply}\\
+& x_{pdt} \ge 0 && \forall p\in\Pset,\ d\in\Dset,\ t\in\Tset \label{eq:nonneg}
+\end{align}
+式\eqref{eq:demand}は各 DC の需要を満たすこと，式\eqref{eq:supply}は各港の供給量を超えて出荷しないことを表す．
+\COO{}の総排出量 $\sum_{p,d,t} e_{pdt}\,x_{pdt}$ は目的関数には含めず，得られた解から結果として集計する評価指標とする．
+
+\subsection{線形計画であること}
+目的関数\eqref{eq:f1}，\eqref{eq:f2}と制約\eqref{eq:demand}〜\eqref{eq:nonneg}はすべて変数 $x$ について線形であり，変数は連続である．
+後述の$\varepsilon$制約も線形不等式なので，本稿で解く問題はすべて\textbf{線形計画問題（LP）}である．
+変数は $4\times30\times2=240$ 個，制約は需要30本と供給4本（および$\varepsilon$制約1本）と小さく，単体法などで高速に厳密な最適解が得られる．
+
+%======================================================================
+\section{\texorpdfstring{$\varepsilon$}{ε}制約法}\label{sec:eps}
+%======================================================================
+$\varepsilon$制約法\cite{haimes1971,chankong1983}は，目的の1つを\textbf{主目的}として最小化し，残りの目的（\textbf{副目的}）を「上限以下」という制約に置き換えて単一目的の問題にする方法である．
+上限を少しずつ変えながら繰り返し解くと，パレートフロント上の点が順に得られる．
+重み付き和法と異なり，パレートフロントが凸でない部分の解も求められるという利点がある\cite{miettinen1999}．
+本問題は LP でありフロントは凸になる（\ref{sec:convex}節）ため重み付き和法でもフロント上の点は得られるが，$\varepsilon$制約法は副目的の上限（ここではコストの予算）を直接指定でき，その値を等間隔に動かせるので，意思決定者にとって解釈しやすい．
+
+\subsection{パレート最適性}\label{sec:pareto}
+総輸送コストと平均所要日数をともに最小化する問題を考える．
+実行可能解 $x$ が $y$ を\textbf{支配する}とは，
+\begin{equation}
+\cost(x)\le\cost(y),\qquad \dur(x)\le\dur(y)
+\end{equation}
+が成り立ち，かつ少なくとも一方が狭義の不等号で成り立つことをいう．すなわち $x$ は $y$ より「どちらの目的も悪くなく，どちらかは真に良い」．
+どの実行可能解にも支配されない解を\textbf{パレート最適解}，その目的値の集合を\textbf{パレートフロント}と呼ぶ．
+図\ref{fig:dominance}のように，フロント上の点 A の右上（A よりコストも日数も大きい領域）にある解はすべて A に支配される．
+フロント上の点どうしは互いに支配せず，一方の目的を良くすると他方が必ず悪くなる．
+どの点を採用するかは最適化だけでは決まらず，コストと日数のどちらをどれだけ重視するかという意思決定に委ねられる．
+各目的の最良値を組み合わせたユートピア点はフロントの左下にあり，トレードオフがある限り実現できない．
+
+\begin{figure}[tbp]
+\centering
+\begin{tikzpicture}[scale=1.0,>=stealth,font=\footnotesize]
+  \def\front{(0.8,3.6) .. controls (1.2,1.5) and (2.8,0.95) .. (4.7,0.85)}
+  \fill[blue!8] \front -- (4.9,3.9) -- (0.8,3.9) -- cycle;
+  \path \front node[pos=0.33,inner sep=0pt] (A) {};
+  \fill[orange!20] (A) rectangle (4.9,3.9);
+  \draw[orange!80!black,dashed] (A |- 0,3.9) -- (A) -- (4.9,0 |- A);
+  \node[orange!70!black] at (4.05,3.6) {A に支配される};
+  \node[black!60] at (3.9,1.3) {実現できる解};
+  \draw[->] (0,0) -- (5.2,0) node[below left] {総輸送コスト};
+  \draw[->] (0,0) -- (0,4.2) node[left] {平均所要日数};
+  \draw[blue!70!black,line width=1.4pt] \front;
+  \node[blue!70!black,below] at (4.3,0.85) {パレートフロント};
+  \fill[blue!70!black] (A) circle (2.4pt);
+  \node[below left] at (A) {A};
+  \fill[black!55] (3.2,2.7) circle (2.2pt) node[right] {B};
+  \fill[green!50!black] (0.8,0.85) circle (2.2pt) node[below=1pt] {ユートピア点（実現できない）};
+  \path \front node[pos=0.55,inner sep=0pt] (E) {};
+  \draw[red!70!black,thick,dashed] (E |- 0,0) -- (E |- 0,3.9) node[above,text=red!70!black] {$\cost(x)\le C$};
+  \fill[red!70!black] (E) circle (2.2pt);
+  \node[red!70!black,above right] at (E) {最適解};
+\end{tikzpicture}
+\caption{目的空間での支配関係とパレートフロント（模式図）．B は A よりコストも日数も大きいので A に支配される．縦の破線はコストの上限 $C$ で，その左側で日数を最小化するとフロント上の点が得られる}\label{fig:dominance}
+\end{figure}
+
+$\varepsilon$制約法で得られる解については，次の性質が知られている\cite{chankong1983,miettinen1999}．
+コストの上限 $C$ のもとで日数を最小化する問題の最適解 $x^*$ は，少なくとも\textbf{弱パレート最適}（両方の目的を同時に真に改善する解がない）であり，最適解が一意であれば\textbf{パレート最適}である．
+実際，ある解 $y$ が $x^*$ を支配すると仮定すると，$\cost(y)\le\cost(x^*)\le C$ より $y$ も上限を満たし，$\dur(y)\le\dur(x^*)$ だから $y$ も最適解になる．最適解が一意なら $y=x^*$ となり，支配するという仮定に反する．
+したがって上限 $C$ を $C^U$ から $C^N$ まで動かすと，フロント上の点が順に得られる（図\ref{fig:dominance}の縦の破線）．
+
+\subsection{ユートピア点とナディア点}
+上限を動かす範囲を決めるため，パレートフロントの「端」を表す2つの点を求める．
+いずれも多目的最適化の標準的な用語である\cite{miettinen1999}．
+
+\textbf{ユートピア点}（理想点）は，各目的を単独で最小化したときの最良値を並べた点
+\begin{equation}
+z^U=(C^U, D^U),\qquad C^U=\min_{x} \cost(x),\quad D^U=\min_{x} \dur(x)
+\end{equation}
+である（$\min$ は実行可能解すべてについてとる）．
+どの解もこの点より良くなることはないので，目的値の下限を表す．
+2つの最小値を同時に達成する解はふつう存在しないため，ユートピア点は実現できない．
+なお，Miettinen\cite{miettinen1999}はこの点を\textbf{理想点}（ideal objective vector）と呼び，理想点よりわずかに良い点を\textbf{ユートピア点}として区別している．
+本稿では元の教材にならい，理想点のことをユートピア点と呼ぶ．
+
+\textbf{ナディア点}（nadir：天底，最も低い点の意）は，\textbf{パレート最適解の中で}各目的が最も悪くなる値を並べた点
+\begin{equation}
+z^N=(C^N, D^N),\qquad C^N=\max_{x\in X_P} \cost(x),\quad D^N=\max_{x\in X_P} \dur(x)
+\end{equation}
+である（$X_P$ はパレート最適解の集合）．
+実行可能解全体での最悪値ではない点に注意する．例えばすべて道路で遠い港から運ぶ解はさらにコストが高いが，パレート最適ではないので含めない．
+ユートピア点とナディア点は，パレートフロントを囲む長方形の左下と右上の角にあたり（図\ref{fig:dominance}），正規化と$\varepsilon$の範囲に使う．
+
+2目的の場合，ナディア点はフロントの両端の解から得られる．
+コストを最小 $C^U$ に固定したうえで日数を最小化した解がフロントの左上の端であり，その日数が $D^N$ である．
+同様に，日数を最短 $D^U$ に固定してコストを最小化した解が右下の端であり，そのコストが $C^N$ である（\textbf{辞書式最適化}）．
+元の演習は，各目的を単独で最小化したときのもう一方の目的の値（ペイオフ表）からナディア点を求めている．
+ペイオフ表は，単独最小化の最適解が複数あるとき，パレート最適でない解の値を拾ってナディア点を悪く見積もることがある\cite{miettinen1999}．
+そこで本稿の実装では辞書式最適化を用いた．
+本問題の初期値では最適解が一意であり，両者の値は一致した．
+パラメータが初期値のとき，ユートピア点は $(C^U, D^U)=(\$1{,}311{,}311,\ 2.50\text{日})$，ナディア点は $(C^N, D^N)=(\$1{,}812{,}413,\ 5.32\text{日})$ であり，その差はコストで\$501,102（約38.2\%），日数で2.82日（約53\%）である．
+コスト最小の解は5.32日かかり，日数最短の解は\$1,812,413かかるので，ユートピア点は実現できない．
+
+
+\subsection{正規化と\texorpdfstring{$\varepsilon$}{ε}制約}
+単位の異なるコストと日数をそろえるため，各目的 $f$ をユートピア値 $f^U$ とナディア値 $f^N$ で正規化する．
+\begin{equation}
+\bar f(x) = \frac{f(x) - f^U}{f^N - f^U} \in [0,1]
+\end{equation}
+$\bar f=0$ はユートピア側，$\bar f=1$ はナディア側である．
+主目的を平均所要日数とすると，$\varepsilon\in[0,1]$ に対して次の LP を解く．
+\begin{equation}
+\min\ \dur(x) \quad \text{s.t.}\quad \overline{\cost}(x) \le \varepsilon,\ \ \text{式\eqref{eq:demand}〜\eqref{eq:nonneg}}
+\label{eq:epsdur}
+\end{equation}
+正規化した制約は $\cost(x) \le C^U + \varepsilon\,(C^N - C^U)$ と同値である．
+$\varepsilon=0$ ではコストを最小値に固定した中で日数が最短の解（コスト最小の端），$\varepsilon=1$ では日数が最短の解（日数最短の端）が得られる．
+実装では，$\varepsilon=0$ のときに数値誤差で実行不可能になることを防ぐため，上限を相対的に $10^{-7}$ だけ緩めている．
+
+\subsection{主目的の切替}
+主目的を総輸送コストにした場合は，
+\begin{equation}
+\min\ \cost(x) \quad \text{s.t.}\quad \dur(x) \le D^U + \varepsilon\,(D^N - D^U),\ \ \text{式\eqref{eq:demand}〜\eqref{eq:nonneg}}
+\label{eq:epscost}
+\end{equation}
+を解く．
+どちらの主目的でも同じパレートフロントが得られることを確認したが，同じ$\varepsilon$でもフロント上の別の点を指す．
+例えば$\varepsilon=0.5$ は，主目的が日数なら\$1,561,862・3.38日，主目的がコストなら\$1,435,456・3.91日の解となる．
+そのため，$\varepsilon$の値を示すときはどちらの主目的かを併記する必要がある．
+元の演習の課題文は平均所要日数を主目的とするよう求めている（コードの雛形のコメントにはコストを主目的とする記述があり，食い違っている）．
+本稿では課題文に従い，特に断らない限り主目的を平均所要日数（式\eqref{eq:epsdur}）とする．アプリでは両方の主目的に切り替えられる．
+
+%======================================================================
+\section{AMPLによる実装}\label{sec:ampl}
+%======================================================================
+\subsection{モデル}
+式\eqref{eq:epsdur}，\eqref{eq:epscost}を AMPL\cite{ampl}で記述したものをリスト\ref{lst:mod}に示す．
+データ（集合・需要・供給・コスト・所要日数）は Python から amplpy で渡す．
+集合 $\Pset,\Dset,\Tset$ は \texttt{PORTS}，\texttt{DCS}，\texttt{MODES}，変数 $x_{pdt}$ は \texttt{flow[k,p,d,t]}，式\eqref{eq:f1}，\eqref{eq:f2}は \texttt{TotalCost[k]}，\texttt{AvgDuration[k]}，式\eqref{eq:demand}，\eqref{eq:supply}は \texttt{Demand}，\texttt{Supply}，$\varepsilon$制約は \texttt{CostCap}，\texttt{DurationCap} に対応する．
+
+
+\begin{figure}[tbp]
+\begin{minipage}[t]{0.40\linewidth}
+\begin{lstlisting}[xleftmargin=1.5em]
+set K;          # blocks solved at once
+set PORTS;  set DCS;  set MODES;
+
+param demand {DCS} >= 0;
+param incoming_flow {PORTS} >= 0;
+param total_demand > 0;
+param unit_cost {PORTS,DCS,MODES} >= 0;
+param duration {PORTS,DCS,MODES} >= 0;
+
+param w_cost {K} default 0;
+param w_duration {K} default 0;
+param cost_cap {K} default Infinity;
+param duration_cap {K} default Infinity;
+
+var flow {K,PORTS,DCS,MODES} >= 0;
+\end{lstlisting}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.58\linewidth}
+\begin{lstlisting}[firstnumber=16, xleftmargin=1.5em]
+var TotalCost {k in K} =
+  sum {p in PORTS,d in DCS,t in MODES}
+    unit_cost[p,d,t]*flow[k,p,d,t];
+var AvgDuration {k in K} =
+  sum {p in PORTS,d in DCS,t in MODES}
+    duration[p,d,t]/total_demand*flow[k,p,d,t];
+minimize Objective: sum {k in K}
+  (w_cost[k]*TotalCost[k]
+   + w_duration[k]*AvgDuration[k]);
+subject to Demand {k in K,d in DCS}:
+  sum {p in PORTS,t in MODES} flow[k,p,d,t] >= demand[d];
+subject to Supply {k in K,p in PORTS}:
+  sum {d in DCS,t in MODES} flow[k,p,d,t]
+    <= incoming_flow[p];
+subject to CostCap {k in K}:
+  TotalCost[k] <= cost_cap[k];
+subject to DurationCap {k in K}:
+  AvgDuration[k] <= duration_cap[k];
+\end{lstlisting}
+\end{minipage}
+\lstcaptype
+\caption{AMPL モデル（\texttt{multiobjective\_core.py} の \texttt{AMPL\_MODEL}．コメントを省略）}\label{lst:mod}
+\end{figure}
+
+各ブロック $k$ では，重み \texttt{w\_cost[k]} と \texttt{w\_duration[k]} の一方を1，他方を0として主目的を選び，副目的の上限 \texttt{cost\_cap[k]} または \texttt{duration\_cap[k]} に$\varepsilon$から計算した値を与える．
+上限を与えないブロックでは既定値 \texttt{Infinity} により制約が実質的に無効になる．
+したがって，ユートピア点（上限なし），ナディア点（他方の目的を最良値に固定），$\varepsilon$制約問題のいずれも，同じモデルのデータを変えるだけで表せる．
+
+\subsection{集合\texorpdfstring{$K$}{K}による一括求解}
+AMPL はソルバーを呼ぶたびに別プロセスとして起動するため（1回あたり2〜4秒），$\varepsilon$ごとに呼ぶと待ち時間が大きくなる．
+そこで，互いに独立な複数の LP を集合 $K$ で添字付けし，\textbf{1つの LP にまとめて}解くことにした．
+ブロック同士は変数も制約も共有しないので，目的関数の和を最小化すれば各ブロックがそれぞれ最適になる．
+すなわち，まとめた LP の最適解は，各ブロックを別々に解いた最適解を並べたものに一致する．
+
+Web アプリの「計算」では，ソルバーを (1) ユートピア点（コスト最小化と日数最小化の2ブロック），(2) ナディア点（辞書式最適化の2ブロック），(3) パレートフロント（グラフに表示する5〜21点の$\varepsilon$と，スライダー用に$\varepsilon=0, 0.01, \dots, 1$とした101点の和集合）の3回だけ呼ぶ．
+スライダーの操作は計算済みの101点の解を表示するだけなので，待ち時間なしで切り替わる．
+0.333 のように0.01刻みでない$\varepsilon$だけは，その1点を追加で解く．
+
+\subsection{モデルの規模・ソルバー・計算時間}
+元のノートブックは gurobipy / MyPuLP でモデルを記述していたが，本稿ではこれを AMPL で書き直し，Python から amplpy で呼び出した．
+ソルバーは AMPL に同梱の HiGHS\cite{highs}であり，環境変数 \texttt{AMPL\_SOLVER} で他のソルバーに切り替えられる．
+モデルの規模と計算時間を表\ref{tab:size}に示す．
+$\varepsilon$制約問題1つは変数240個・制約35本の小さな LP であり，パレートフロントの計算では101ブロックを集合 $K$ でまとめて，変数24,240個の LP として1回で解く．
+「計算」1回の12〜17秒の大半は呼び出しごとの AMPL のプロセス起動であり，LP の求解自体は短い．
+参考として，同じ LP を別の環境（Mac）で scipy の HiGHS（\texttt{linprog}）により解くと，1問あたり約0.001秒，101問を順に解いても約0.1秒であった．
+
+\begin{table}[tbp]
+\centering\small
+\caption{モデルの規模と計算時間（時間は作成した PC（Windows）での実測．最下行のみ別環境での参考値）}\label{tab:size}
+\begin{tabular}{ll}
+\toprule
+項目 & 値 \\
+\midrule
+$\varepsilon$制約問題1つの LP & 変数240（$4\times30\times2$），制約35（需要30・供給4・$\varepsilon$制約1） \\
+パレートフロントの計算 & 101ブロック（$\varepsilon=0,0.01,\dots,1$）を一括，変数24,240 \\
+\midrule
+「計算」（ソルバー3回） & 12〜17秒（ユートピア点 → ナディア点 → 101ブロック） \\
+0.01刻みでない$\varepsilon$の1点 & 約5秒 \\
+AMPL のプロセス起動 & 1回あたり2〜4秒 \\
+\midrule
+参考：scipy の HiGHS（Mac） & 1問約0.001秒，101問を順に約0.1秒 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%======================================================================
+\section{Webアプリの構成と使い方}\label{sec:app}
+%======================================================================
+\subsection{構成}
+アプリは画面・API・最適化の3層からなる（図\ref{fig:arch}）．
+画面は React（TypeScript，Vite）で作成し，パレートフロントのグラフには Recharts を，地図には Leaflet と OpenStreetMap を用いた．
+API は FastAPI で作成し，初期データを返す \texttt{/api/network}，ユートピア点・ナディア点とフロント（101点を含む）を返す \texttt{/api/frontier}，指定した$\varepsilon$で1回解く \texttt{/api/solve} を持つ．
+API は起動時に事前計算済みの \texttt{network.json}（区間ごとの距離と地図用の経路座標）を読み込み，入力されたパラメータから式\eqref{eq:cost}〜\eqref{eq:emis}でコスト・日数・排出量を計算して AMPL に渡す．
+
+\begin{figure}[tbp]
+\centering
+\begin{tikzpicture}[
+  box/.style={draw, rounded corners=3pt, align=center, text width=30mm, minimum height=14mm, font=\scriptsize},
+  pre/.style={draw, dashed, rounded corners=3pt, align=center, text width=36mm, minimum height=9mm, font=\scriptsize},
+  arr/.style={->, >=stealth, thick},
+  lab/.style={font=\scriptsize, align=center}]
+\node[box] (ui) {\textbf{画面（React）}\\ グラフ：Recharts\\ 地図：Leaflet＋OSM};
+\node[box, right=18mm of ui, text width=34mm] (api) {\textbf{API（FastAPI）}\\ \texttt{/api/network}\\ \texttt{/api/frontier}\\ \texttt{/api/solve}};
+\node[box, right=18mm of api] (opt) {\textbf{最適化}\\ AMPL＋HiGHS\\（amplpy 経由）};
+\draw[arr] ([yshift=2mm]ui.east) -- node[lab, above]{入力値} ([yshift=2mm]api.west);
+\draw[arr] ([yshift=-2mm]api.west) -- node[lab, below]{結果} ([yshift=-2mm]ui.east);
+\draw[arr] ([yshift=2mm]api.east) -- node[lab, above]{データ} ([yshift=2mm]opt.west);
+\draw[arr] ([yshift=-2mm]opt.west) -- node[lab, below]{解} ([yshift=-2mm]api.east);
+\node[pre, below=5mm of api] (net) {\textbf{network.json}\\ 道路・鉄道の距離と経路};
+\node[pre, left=18mm of net] (sc) {\textbf{事前計算（1回）}\\ scgraph で最短経路};
+\draw[arr, black!60] (sc) -- (net);
+\draw[arr, black!60] (net) -- node[lab, right]{起動時に読込} (api);
+\end{tikzpicture}
+\caption{Web アプリの構成}\label{fig:arch}
+\end{figure}
+
+\subsection{画面と使い方}
+画面全体を図\ref{fig:app}に示す．
+左側で$\varepsilon$制約法の設定（主目的，パレートフロントの点の数5〜21）と，パラメータ（コスト単価・最低料金，速度・稼働時間・ターミナル滞留日数，\COO{}排出係数）および港の供給量・DC の需要を変更できる．
+アプリを開くと初期値で計算が始まる（10〜20秒程度）．利用者は主目的を選び，必要ならパラメータを変えて「計算」を押す．入力欄に空欄や範囲外の値があると欄が赤くなり，計算ボタンは押せなくなる．パレートフロントの点にマウスを乗せると値が表示され，クリックするとその解が選ばれる．スライダーで$\varepsilon$を0.01刻みで動かすと，指標と地図がその場で切り替わる．地図（オレンジ＝道路，緑＝鉄道，線の太さ＝輸送量）と一覧表で，どの港からどの DC へどのモードで運ぶかを確かめられる．
+
+\begin{figure}[tbp]
+\centering
+\includegraphics[width=0.5\linewidth]{\imgdir/app_overview.png}
+\caption{Web アプリの画面（上部）．左に設定とパラメータ，右にユートピア点・ナディア点，パレートフロント，$\varepsilon$の選択が並ぶ．地図と輸送一覧は画面の下にある}\label{fig:app}
+\end{figure}
+
+%======================================================================
+\section{結果}\label{sec:result}
+%======================================================================
+パラメータを初期値とし，主目的を平均所要日数，表示点の数を11（$\varepsilon$を0.1刻み）として計算した．
+
+\subsection{\texorpdfstring{$\varepsilon$}{ε}ごとの解とパレートフロント}
+各$\varepsilon$の解を表\ref{tab:eps}に，パレートフロントを図\ref{fig:pareto}に示す．
+$\varepsilon=0$ の総輸送コスト（\$1,311,312）がユートピア値（\$1,311,311）と1ドル異なるのは，$\varepsilon$制約の上限を相対的に $10^{-7}$ だけ緩めている（\ref{sec:eps}節）ためである．
+コストの上限は$\varepsilon$に比例するので，$\varepsilon$が0.1増えるごとに総輸送コストは約\$50,110ずつ増えるが，平均所要日数の減り方は一様ではない．
+
+\begin{table}[tbp]
+\centering\small
+\caption{$\varepsilon$ごとの総輸送コスト・平均所要日数・\COO{}排出量・輸送モードの割合（主目的＝平均所要日数）}\label{tab:eps}
+\begin{tabular}{crrrrr}
+\toprule
+$\varepsilon$ & 総輸送コスト & 平均所要日数 & \COO{}排出量 & 道路のみ & 鉄道＋道路 \\
+\midrule
+\textbf{0.0} & \textbf{\$1,311,312} & \textbf{5.32日} & \textbf{1,151トン} & \textbf{34.1\%} & \textbf{65.9\%} \\
+0.1 & \$1,361,422 & 4.49日 & 1,556トン & 55.5\% & 44.5\% \\
+0.2 & \$1,411,532 & 4.07日 & 1,804トン & 67.4\% & 32.6\% \\
+0.3 & \$1,461,642 & 3.79日 & 2,001トン & 75.7\% & 24.3\% \\
+0.4 & \$1,511,752 & 3.57日 & 2,197トン & 80.0\% & 20.0\% \\
+\textbf{0.5} & \textbf{\$1,561,862} & \textbf{3.38日} & \textbf{2,386トン} & \textbf{83.7\%} & \textbf{16.3\%} \\
+0.6 & \$1,611,973 & 3.19日 & 2,575トン & 87.1\% & 12.9\% \\
+0.7 & \$1,662,083 & 3.00日 & 2,763トン & 90.5\% & 9.5\% \\
+0.8 & \$1,712,193 & 2.82日 & 2,940トン & 94.0\% & 6.0\% \\
+0.9 & \$1,762,303 & 2.66日 & 3,107トン & 97.1\% & 2.9\% \\
+\textbf{1.0} & \textbf{\$1,812,413} & \textbf{2.50日} & \textbf{3,272トン} & \textbf{100.0\%} & \textbf{0.0\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[tbp]
+\centering
+\includegraphics[width=0.6\linewidth]{\imgdir/pareto_front.png}
+\caption{パレートフロント（横軸：総輸送コスト，縦軸：平均所要日数）．点の色は\COO{}排出量を表し，濃いほど多い．丸で囲んだ点は$\varepsilon=0.5$ の解}\label{fig:pareto}
+\end{figure}
+
+\subsection{収穫逓減}
+フロントは左側（$\varepsilon=0.1$〜0.3付近）で大きく曲がっている．
+最初の+\$50,110（$\varepsilon$ 0→0.1，+3.8\%）で日数は0.84日短縮し，これは短縮できる幅2.82日の約30\%にあたる．
+$\varepsilon=0.2$ まで（+\$100,220）で1.25日（約44\%），$\varepsilon=0.3$ まで（+\$150,330，追加コスト全体の30\%）で1.53日（約54\%）短縮する．
+一方，最後の+\$50,110（$\varepsilon$ 0.9→1.0）では0.16日しか短縮できない．
+1日短縮するのに必要な追加コストは，最初の区間の約\$6.0万/日から，最後の区間の約\$31.9万/日まで，区間ごとに単調に上がる（図\ref{fig:marginal}）．
+すなわち，追加予算は最初に使うほど効果が大きい（収穫逓減）．
+
+\begin{figure}[tbp]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+  width=0.8\linewidth, height=5.2cm,
+  ybar, bar width=12pt, ymin=0, ymax=36,
+  xlabel={$\varepsilon$ の区間}, ylabel={追加コスト（万ドル／日）},
+  xtick=data,
+  xticklabels={0--0.1,0.1--0.2,0.2--0.3,0.3--0.4,0.4--0.5,0.5--0.6,0.6--0.7,0.7--0.8,0.8--0.9,0.9--1},
+  x tick label style={font=\scriptsize,rotate=30,anchor=north east},
+  y tick label style={font=\scriptsize}, label style={font=\footnotesize},
+  nodes near coords, nodes near coords style={font=\scriptsize},
+  axis lines*=left, ymajorgrids, grid style={black!12}, enlarge x limits=0.06,
+]
+\addplot[fill=blue!55,draw=none] coordinates {
+  (1,6.0) (2,12.0) (3,17.7) (4,23.4) (5,25.4) (6,26.4) (7,27.0) (8,28.5) (9,30.8) (10,31.9)};
+\end{axis}
+\end{tikzpicture}
+\caption{$\varepsilon$を0.1増やすごとの「1日短縮あたりの追加コスト」（主目的＝平均所要日数）．各区間のコストの増分は\$50,110で一定であり，短縮できる日数が区間ごとに減るため値が単調に増える}\label{fig:marginal}
+\end{figure}
+
+\subsection{フロントの凸性と収穫逓減の理由}\label{sec:convex}
+この単調な増加は，データに固有の偶然ではなく，問題が LP であることから必ず生じる．
+コストの上限を $C$ としたときの最短の平均所要日数を
+\begin{equation}
+D(C)=\min\{\dur(x) : \cost(x)\le C,\ \text{式\eqref{eq:demand}〜\eqref{eq:nonneg}}\}
+\end{equation}
+とおく．$D(C)$ は右辺 $C$ をパラメータとする LP の最適値関数であり，$C$ について\textbf{凸かつ区分線形}で，非増加である\cite{chankong1983}．
+凸性は次のように確かめられる．上限 $C_1, C_2$ での最適解を $x_1, x_2$ とし，$0\le\lambda\le1$ とすると，制約がすべて線形なので $\lambda x_1+(1-\lambda)x_2$ は上限 $\lambda C_1+(1-\lambda)C_2$ のもとで実行可能であり，
+$D(\lambda C_1+(1-\lambda)C_2)\le \lambda D(C_1)+(1-\lambda)D(C_2)$ が成り立つ．
+したがってパレートフロント（$D(C)$ のグラフのうち $C^U\le C\le C^N$ の部分）は凸な折れ線であり，その傾き $-D'(C)$，すなわち「1ドル追加して短縮できる日数」は $C$ が大きいほど小さくなる．
+その逆数である「1日短縮あたりの追加コスト」は単調に増加し，図\ref{fig:marginal}の結果と一致する．
+また，LP の双対定理より，傾き $-D'(C)$ はコストの上限制約（$\varepsilon$制約）の\textbf{双対変数（シャドウプライス）}に等しい．
+フロントが折れ線になるのは，上限を緩めるにつれて最適な基底（どの港からどの DC へどのモードで運ぶかの組合せ）が切り替わり，切り替わりの点で傾きが変わるためである．
+
+\subsection{代表解・地図と\texorpdfstring{\COO{}}{CO2}排出量}
+代表的な3つの解（$\varepsilon=0, 0.5, 1$，表\ref{tab:eps}の太字の行）を比べ，両端の解の輸送フローを図\ref{fig:map}に示す．
+$\varepsilon=0$（コスト最小）では4港すべてで鉄道を多く使い，鉄道＋道路の割合は65.9\%である．
+$\varepsilon=0.5$ では，鉄道を使うのは Tacoma 港からの2,451トンだけで，他の港はすべて道路のみとなる．
+$\varepsilon=1$（日数最短）ではすべて道路のみで運ぶ．
+
+\begin{figure}[tbp]
+\centering
+\begin{minipage}[b]{0.4\linewidth}
+\centering
+\includegraphics[width=\linewidth]{\imgdir/map_eps0.png}\\
+{\small (a) $\varepsilon=0$（コスト最小）}
+\end{minipage}\hspace{0.03\linewidth}
+\begin{minipage}[b]{0.4\linewidth}
+\centering
+\includegraphics[width=\linewidth]{\imgdir/map_eps1.png}\\
+{\small (b) $\varepsilon=1$（日数最短）}
+\end{minipage}
+\caption{両端の解の輸送フロー（緑＝鉄道，オレンジ＝道路，線の太さ＝輸送量）．(a) は鉄道が多く\COO{}は1,151トン，(b) はすべて道路で\COO{}は3,272トン}\label{fig:map}
+\end{figure}
+
+\COO{}排出量は目的関数に含めていないが，このように日数を縮めるほど鉄道の割合が65.9\%から0\%へ減るため，1,151トンから3,272トンへ約2.8倍に増える（表\ref{tab:eps}）．
+ただし，これは\COO{}を最小化した結果ではなく，日数を縮めた結果として生じた値である点に注意する．
+
+%======================================================================
+\section{考察}\label{sec:discussion}
+%======================================================================
+パレートフロントは「唯一の最適解」ではなく，「どこまで払ってどこまで速くするか」を選ぶための選択肢の一覧である．
+表\ref{tab:eps}から，重視することに応じた$\varepsilon$の目安は，コスト・環境重視なら$\varepsilon=0$〜0.1（\$1.31M〜1.36M，5.32〜4.49日，\COO{} 1,151〜1,556トン），バランスなら$\varepsilon=0.3$（\$1.46M，3.79日，2,001トン），納期優先なら$\varepsilon=0.7$〜1.0（\$1.66M〜1.81M，3.00〜2.50日，2,763〜3,272トン）となる．
+特に$\varepsilon=0.3$ は，コスト最小の解から+\$150,330（約11\%）で日数を5.32日から3.79日に縮められ，費用対効果の高い領域の終わりにあたる．
+
+区間を2つに分けて1日短縮あたりの追加コストを比べると，$\varepsilon=0\to0.3$ では+\$150,330で1.53日短縮（約\$10万/日），$\varepsilon=0.3\to1.0$ では+\$350,771で1.29日短縮（約\$27万/日）である．
+後半は前半の2倍以上である．
+例えば「1日の短縮に\$10万まで払える」という基準があれば，その金額に見合う$\varepsilon=0.3$ 付近の解をフロントからそのまま選べる（最終的な判断は業務上の納期の価値による）．
+
+
+%======================================================================
+\section{限界と今後の課題}
+%======================================================================
+本稿のモデルとアプリには次の前提と限界がある．各 DC が使う鉄道ターミナルは12か所のうち測地線距離（道路・鉄道網上の距離ではない）で最も近い1か所に固定している．輸送量は連続量として扱っており，解に端数が含まれうる．渋滞や運行ダイヤは考慮していない．\COO{}は結果として表示する指標であり，目的関数には含めていない．
+
+今後の課題としては，\COO{}を第3の目的に加えた3目的への拡張，DC ごとに複数の鉄道ターミナルから選べるようにすること，輸送量をトラックやコンテナの単位で整数化すること（混合整数計画への拡張），需要や速度の変動に対する感度分析が挙げられる．
+
+%======================================================================
+\section{おわりに}
+%======================================================================
+\enlargethispage{3\baselineskip}
+4港から30か所の DC へ15,000トンを運ぶ輸送計画を，総輸送コストと平均所要日数の2目的の線形計画として定式化し，$\varepsilon$制約法でパレートフロントを求めた．
+モデルは AMPL で記述して HiGHS で解き，101個の$\varepsilon$制約問題を集合 $K$ でまとめて1回のソルバー呼び出しで解くことで，スライダーで待ち時間なく解を切り替えられる Web アプリを実現した．
+その結果，コストと日数は両立せず，追加コストの最初の30\%で日数の短縮幅の約54\%が得られ，日数を縮めるほど\COO{}排出量が増える（最大約2.8倍）ことが分かった．
+本アプリは，選択可能なパレート解の比較を数値と地図の両面から助けるものである．
+
+%======================================================================
+\begin{thebibliography}{9}\footnotesize\setlength{\itemsep}{0pt}\setlength{\parsep}{0pt}
+\bibitem{haimes1971}
+Y.~Y. Haimes, L.~S. Lasdon, and D.~A. Wismer,
+``On a bicriterion formulation of the problems of integrated system identification and system optimization,''
+\textit{IEEE Transactions on Systems, Man, and Cybernetics}, vol.~SMC-1, no.~3, pp.~296--297, 1971.
+
+\bibitem{chankong1983}
+V.~Chankong and Y.~Y. Haimes,
+\textit{Multiobjective Decision Making: Theory and Methodology}, North-Holland, 1983.
+
+\bibitem{miettinen1999}
+K.~Miettinen,
+\textit{Nonlinear Multiobjective Optimization}, Kluwer Academic Publishers, 1999.
+
+\bibitem{ampl}
+R.~Fourer, D.~M. Gay, and B.~W. Kernighan,
+\textit{AMPL: A Modeling Language for Mathematical Programming}, 2nd ed., Duxbury Press, 2003.
+
+\bibitem{highs}
+Q.~Huangfu and J.~A.~J. Hall,
+``Parallelizing the dual revised simplex method,''
+\textit{Mathematical Programming Computation}, vol.~10, pp.~119--142, 2018.
+
+\bibitem{cbo2022}
+C.~Shirley and R.~Gecan,
+``Emissions of Carbon Dioxide in the Transportation Sector,''
+Congressional Budget Office, 2022.
+\end{thebibliography}
+
+\end{document}
