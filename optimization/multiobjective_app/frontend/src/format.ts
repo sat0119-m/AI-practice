@@ -5,6 +5,10 @@ export const fmtCostShort = (v: number) => `$${Number((v / 1e6).toFixed(3))}M`;
 export const fmtDays = (v: number) => `${v.toFixed(2)} 日`;
 export const fmtCo2 = (v: number) => `${Math.round(v).toLocaleString("ja-JP")} t`;
 export const fmtTon = (v: number) => `${Math.round(v).toLocaleString("ja-JP")} t`;
+/** 「コスト」の定義（画面のツールチップに出す） */
+export const COST_DEFINITION =
+  "総輸送コスト = 運賃の合計。1トンあたりの運賃は区間ごとに max(トン・マイル単価×距離, 最低料金)（鉄道＋道路は2区間の和）。積み替え・保管・在庫の費用や時間価値は含まない。";
+
 export const fmtPct = (v: number) => `${v.toFixed(1)}%`;
 
 // 輸送モードの色（カテゴリ色。道路 = オレンジ、鉄道 = アクア）

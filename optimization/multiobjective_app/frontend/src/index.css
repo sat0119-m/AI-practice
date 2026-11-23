@@ -201,9 +201,10 @@ button.primary {
   margin-top: 3px;
 }
 
-.segmented span {
+.segmented label > span {
   display: flex;
   flex-direction: column;
+  gap: 2px;
 }
 
 .segmented small {
@@ -494,16 +495,35 @@ summary {
 }
 
 .map-legend {
-  position: absolute;
-  right: 10px;
-  bottom: 22px;
-  z-index: 1000;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 8px 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin-top: 8px;
   font-size: 12px;
-  line-height: 1.8;
+}
+
+.lg-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+
+.lg-title {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.lg-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.lg-note {
+  color: var(--text-muted);
+  font-size: 11px;
 }
 
 /* 輸送フローの一覧 */
@@ -528,4 +548,331 @@ summary {
 .flow-table .num {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+/* ---------- What-if シナリオ ---------- */
+.card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+button.link {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--accent);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.choice {
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.choice-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.choice-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.choice-buttons button {
+  padding: 3px 10px;
+  font-size: 12px;
+  border-radius: 999px;
+}
+
+.choice-buttons button.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.port-toggles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+.port-toggle {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 6px;
+  align-items: center;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.port-toggle small {
+  grid-column: 2;
+  color: var(--text-muted);
+}
+
+.port-toggle.closed {
+  border-color: var(--error);
+  background: var(--error-soft);
+}
+
+.port-toggle.closed small {
+  color: var(--error);
+}
+
+.scenario-banner {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  white-space: nowrap;
+  height: 36px;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: var(--accent-soft);
+  font-size: 13px;
+}
+
+.chip {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  font-size: 12px;
+}
+
+/* ---------- 画面の整理：グラフと地図を左右に並べる ---------- */
+.viz-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+@media (max-width: 1100px) {
+  .viz-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.viz-grid .card {
+  min-width: 0;
+}
+
+.viz-grid .map {
+  height: 500px;
+}
+
+.bounds-inline {
+  margin: -6px 0 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.bounds-inline .sep {
+  margin: 0 4px;
+}
+
+.cap .muted {
+  margin-left: 6px;
+  font-size: 12px;
+}
+
+.viz-grid .stat-value {
+  font-size: 17px;
+}
+
+.viz-grid .stats {
+  gap: 8px;
+}
+
+/* 詳細設定（最初は閉じておく） */
+.advanced > summary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.advanced > summary small {
+  font-weight: 400;
+  font-size: 12px;
+}
+
+.advanced[open] > summary {
+  margin-bottom: 8px;
+}
+
+.sub-section {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  margin-top: 12px;
+}
+
+.sub-section h2 {
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+/* 主目的・副目的の目印 */
+.role {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.6;
+  vertical-align: 1px;
+}
+
+.primary-role {
+  background: var(--accent);
+  color: #fff;
+}
+
+.secondary-role {
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  background: #fff;
+}
+
+.tag.primary-tag {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* 「入力が変わった」「計算中」：結果の上に重ねて表示する（レイアウトをずらさない） */
+
+.viz-grid.is-stale > .card,
+.viz-grid.is-busy > .card {
+  opacity: 0.55;
+  transition: opacity 0.15s;
+}
+
+.viz-overlay {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1100; /* 地図（Leaflet）より前面 */
+  max-width: calc(100% - 20px);
+  padding: 6px 14px;
+  border: 1px solid #e8c766;
+  border-radius: 999px;
+  background: var(--notice-soft);
+  font-size: 13px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  pointer-events: none;
+}
+
+.viz-overlay.hidden {
+  display: none;
+}
+
+.viz-grid.is-busy .viz-overlay {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+button.primary.needs-recompute {
+  box-shadow: 0 0 0 3px #f3c94b;
+}
+
+.scenario-banner.base {
+  border-color: var(--border);
+  background: var(--surface-1);
+}
+
+.scenario-banner > * {
+  flex-shrink: 0;
+}
+
+.sub-section.first {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 0;
+}
+
+/* 地図：輸送の向きを示す破線のアニメーション（破線の周期 2+14=16 だけずらすと継ぎ目なくループする） */
+.flow-dash {
+  animation: flow-move 1s linear infinite;
+}
+
+/* 1周の時間 = 60 / 速度（mph）秒。地図の外側（.map-wrap）で速度から計算して渡す */
+.flow-dash.road {
+  animation-duration: var(--road-dur, 1s);
+}
+
+.flow-dash.rail {
+  animation-duration: var(--rail-dur, 1.71s);
+}
+
+@keyframes flow-move {
+  to {
+    stroke-dashoffset: -16;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flow-dash,
+  .notice.busy::before {
+    animation: none;
+  }
+
+  .viz-grid.is-stale > .card,
+  .viz-grid.is-busy > .card {
+    transition: none;
+  }
+}
+
+/* 用語の定義を示す「?」（マウスを乗せると説明が出る） */
+.info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 4px;
+  border-radius: 50%;
+  border: 1px solid var(--text-muted);
+  color: var(--text-muted);
+  font-size: 10px;
+  cursor: help;
+  vertical-align: 1px;
+}
+
+/* 画面には出さず、読み上げにだけ使うテキスト */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+button.link:disabled {
+  color: var(--text-muted);
+  cursor: default;
 }

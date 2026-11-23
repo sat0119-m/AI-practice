@@ -33,8 +33,13 @@ export function fetchNetwork(signal?: AbortSignal): Promise<Network> {
   return request<Network>("/api/network", undefined, signal);
 }
 
-export function fetchFrontier(inputs: Inputs, primary: Primary, nPoints: number): Promise<FrontierResult> {
-  return request<FrontierResult>("/api/frontier", { ...inputs, primary, n_points: nPoints });
+export function fetchFrontier(
+  inputs: Inputs,
+  primary: Primary,
+  nPoints: number,
+  signal?: AbortSignal,
+): Promise<FrontierResult> {
+  return request<FrontierResult>("/api/frontier", { ...inputs, primary, n_points: nPoints }, signal);
 }
 
 export async function solveEpsilon(

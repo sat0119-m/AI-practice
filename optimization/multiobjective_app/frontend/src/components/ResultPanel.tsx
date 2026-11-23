@@ -1,5 +1,5 @@
 import type { Bounds, Primary, Solution } from "../types";
-import { RAIL_COLOR, ROAD_COLOR, fmtCo2, fmtCost, fmtDays, fmtPct } from "../format";
+import { COST_DEFINITION, RAIL_COLOR, ROAD_COLOR, fmtCo2, fmtCost, fmtDays, fmtPct } from "../format";
 
 interface Props {
   solution: Solution;
@@ -7,7 +7,7 @@ interface Props {
   primary: Primary;
 }
 
-/** 選択中の解の評価指標（総コスト・平均所要日数・CO2・輸送モードの割合） */
+/** 選択中の解の評価指標（総輸送コスト・平均所要日数・CO2・輸送モードの割合） */
 export default function ResultPanel({ solution: s, bounds, primary }: Props) {
   // ユートピア値からどれだけ離れているか（0% = ユートピア値、100% = ナディア値）
   const rel = (v: number, lo: number, hi: number) => (hi > lo ? (100 * (v - lo)) / (hi - lo) : 0);
@@ -16,12 +16,22 @@ export default function ResultPanel({ solution: s, bounds, primary }: Props) {
     <div className="result">
       <div className="stats">
         <div className="stat">
-          <div className="stat-label">総コスト{primary === "duration" && <span className="tag">上限 ε</span>}</div>
+          <div className="stat-label" title={COST_DEFINITION}>
+            総輸送コスト
+            <span className="info" aria-hidden="true">
+              ?
+            </span>
+            <span className="sr-only">（{COST_DEFINITION}）</span>
+            {primary === "cost" ? <span className="tag primary-tag">主目的</span> : <span className="tag">副目的・上限 ε</span>}
+          </div>
           <div className="stat-value">{fmtCost(s.cost)}</div>
           <div className="stat-sub">ユートピア値から {fmtPct(rel(s.cost, bounds.utopia_cost, bounds.nadir_cost))}</div>
         </div>
         <div className="stat">
-          <div className="stat-label">平均所要日数{primary === "cost" && <span className="tag">上限 ε</span>}</div>
+          <div className="stat-label">
+            平均所要日数
+            {primary === "duration" ? <span className="tag primary-tag">主目的</span> : <span className="tag">副目的・上限 ε</span>}
+          </div>
           <div className="stat-value">{fmtDays(s.duration)}</div>
           <div className="stat-sub">
             ユートピア値から {fmtPct(rel(s.duration, bounds.utopia_duration, bounds.nadir_duration))}

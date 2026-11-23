@@ -15,6 +15,8 @@ interface Props {
   frontier: FrontierResult;
   selected: Solution | null;
   onSelect: (s: Solution) => void;
+  /** グラフの高さ（px） */
+  height?: number;
 }
 
 interface Datum {
@@ -48,7 +50,9 @@ function PointTooltip({ active, payload }: { active?: boolean; payload?: { paylo
   return (
     <div className="tooltip">
       <div className="tooltip-title">ε = {s.epsilon.toFixed(3)}</div>
-      <div>総コスト <b>{fmtCost(s.cost)}</b></div>
+      <div>
+        総輸送コスト <b>{fmtCost(s.cost)}</b>
+      </div>
       <div>平均所要日数 <b>{fmtDays(s.duration)}</b></div>
       <div>CO2 排出量 <b>{fmtCo2(s.emissions)}</b></div>
       <div>道路 {fmtPct(s.share_road)} ／ 鉄道 {fmtPct(s.share_rail)}</div>
@@ -57,7 +61,7 @@ function PointTooltip({ active, payload }: { active?: boolean; payload?: { paylo
   );
 }
 
-export default function FrontierChart({ frontier, selected, onSelect }: Props) {
+export default function FrontierChart({ frontier, selected, onSelect, height = 340 }: Props) {
   const { bounds, points, grid } = frontier;
   const co2s = grid.map((s) => s.emissions);
   const co2Min = Math.min(...co2s);
@@ -92,7 +96,7 @@ export default function FrontierChart({ frontier, selected, onSelect }: Props) {
       </div>
       {/* 非表示の説明（tooltip）が前の位置に残り、画面幅を縮めたときに横スクロールが出るのを防ぐ */}
       <div className="chart-box">
-      <ResponsiveContainer width="100%" height={340}>
+      <ResponsiveContainer width="100%" height={height}>
         <ScatterChart margin={{ top: 16, right: 24, bottom: 28, left: 12 }}>
           <CartesianGrid stroke="#e8e7e2" strokeDasharray="0" />
           <XAxis
@@ -103,7 +107,7 @@ export default function FrontierChart({ frontier, selected, onSelect }: Props) {
             tickFormatter={fmtCostShort}
             stroke={MUTED}
             tick={{ fontSize: 12 }}
-            label={{ value: "総コスト", position: "insideBottom", offset: -16, fill: MUTED, fontSize: 12 }}
+            label={{ value: "総輸送コスト", position: "insideBottom", offset: -16, fill: MUTED, fontSize: 12 }}
           />
           <YAxis
             type="number"

@@ -1,0 +1,356 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Multi-Objective Optimization - Epsilon Constraint Method",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/network": {
+      "get": {
+        "summary": "Get Network",
+        "description": "ノード・区間の経路座標と、画面の初期値を返す",
+        "operationId": "get_network_api_network_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/frontier": {
+      "post": {
+        "summary": "Post Frontier",
+        "description": "ユートピア点・ナディア点とパレートフロントを計算する",
+        "operationId": "post_frontier_api_frontier_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FrontierRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/solve": {
+      "post": {
+        "summary": "Post Solve",
+        "description": "指定した ε で1回だけ解く",
+        "operationId": "post_solve_api_solve_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SolveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Bounds": {
+        "properties": {
+          "utopia_cost": {
+            "type": "number",
+            "title": "Utopia Cost"
+          },
+          "nadir_cost": {
+            "type": "number",
+            "title": "Nadir Cost"
+          },
+          "utopia_duration": {
+            "type": "number",
+            "title": "Utopia Duration"
+          },
+          "nadir_duration": {
+            "type": "number",
+            "title": "Nadir Duration"
+          }
+        },
+        "type": "object",
+        "required": [
+          "utopia_cost",
+          "nadir_cost",
+          "utopia_duration",
+          "nadir_duration"
+        ],
+        "title": "Bounds",
+        "description": "ユートピア点とナディア点"
+      },
+      "FrontierRequest": {
+        "properties": {
+          "params": {
+            "$ref": "#/components/schemas/Params"
+          },
+          "demand": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Demand"
+          },
+          "incoming_flow": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Incoming Flow"
+          },
+          "primary": {
+            "type": "string",
+            "enum": [
+              "duration",
+              "cost"
+            ],
+            "title": "Primary",
+            "default": "duration"
+          },
+          "n_points": {
+            "type": "integer",
+            "maximum": 50.0,
+            "minimum": 2.0,
+            "title": "N Points",
+            "default": 11
+          }
+        },
+        "type": "object",
+        "required": [
+          "params",
+          "demand",
+          "incoming_flow"
+        ],
+        "title": "FrontierRequest",
+        "description": "パレートフロントの計算リクエスト"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "Params": {
+        "properties": {
+          "cost_mile_road": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Cost Mile Road"
+          },
+          "cost_mile_rail": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Cost Mile Rail"
+          },
+          "min_cost_road": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Min Cost Road"
+          },
+          "min_cost_rail": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Min Cost Rail"
+          },
+          "emission_road_lb": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Emission Road Lb"
+          },
+          "emission_rail_lb": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Emission Rail Lb"
+          },
+          "speed_road": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Speed Road"
+          },
+          "speed_rail": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Speed Rail"
+          },
+          "hours_day": {
+            "type": "number",
+            "maximum": 24.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Hours Day"
+          },
+          "duration_rail_terminal": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Duration Rail Terminal"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cost_mile_road",
+          "cost_mile_rail",
+          "min_cost_road",
+          "min_cost_rail",
+          "emission_road_lb",
+          "emission_rail_lb",
+          "speed_road",
+          "speed_rail",
+          "hours_day",
+          "duration_rail_terminal"
+        ],
+        "title": "Params",
+        "description": "アークのコスト・排出量・所要時間を計算するためのパラメータ"
+      },
+      "SolveRequest": {
+        "properties": {
+          "params": {
+            "$ref": "#/components/schemas/Params"
+          },
+          "demand": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Demand"
+          },
+          "incoming_flow": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Incoming Flow"
+          },
+          "primary": {
+            "type": "string",
+            "enum": [
+              "duration",
+              "cost"
+            ],
+            "title": "Primary",
+            "default": "duration"
+          },
+          "epsilon": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Epsilon"
+          },
+          "bounds": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Bounds"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "params",
+          "demand",
+          "incoming_flow",
+          "epsilon"
+        ],
+        "title": "SolveRequest",
+        "description": "1回だけ解くリクエスト（bounds を省略すると、ユートピア点・ナディア点から求める）"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

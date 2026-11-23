@@ -58,7 +58,8 @@ export function validate(inputs: Inputs, nPointsText: string): Validation {
   const totalDemand = total(inputs.demand);
   const totalSupply = total(inputs.incoming_flow);
   if (totalDemand <= 0) messages.push("需要の合計が 0 です");
-  else if (totalSupply < totalDemand) messages.push("供給量の合計が需要の合計より少ないため、計算できません");
+  // 港の振り替えなどで生じる浮動小数点の誤差（1e-12 程度）では止めない（バックエンドと同じ考え方）
+  else if (totalSupply < totalDemand - 1e-9 * Math.max(1, totalDemand)) messages.push("供給量の合計が需要の合計より少ないため、計算できません");
 
   return { fields, messages };
 }

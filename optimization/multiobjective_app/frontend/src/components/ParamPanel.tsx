@@ -1,3 +1,4 @@
+import { useEffect, useState, type ReactNode } from "react";
 import type { Inputs, Network, Params, Primary } from "../types";
 import { fmtTon } from "../format";
 import { N_POINTS_MAX, N_POINTS_MIN, type Validation } from "../validate";
@@ -14,6 +15,10 @@ interface Props {
   onReset: () => void;
   onCompute: () => void;
   computing: boolean;
+  /** 入力が前回の計算から変わったか（ボタンを「再計算」にする） */
+  stale?: boolean;
+  /** 「ε制約法の設定」の下に差し込む欄（What-if シナリオ） */
+  scenarioSlot?: ReactNode;
 }
 
 // パラメータ入力欄の定義（グループ・ラベル・単位・刻み）
@@ -45,6 +50,22 @@ const PARAM_GROUPS: { title: string; fields: { key: keyof Params; label: string;
   },
 ];
 
+/**
+ * 入力エラーがあるときに自動で開く折りたたみ。
+ * open を props で直接渡すと、エラーが消えた瞬間に勝手に閉じるため、開閉は自分で持ち、エラーで開くだけにする。
+ */
+function AutoOpenDetails(props: { forceOpen: boolean; className?: string; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (props.forceOpen) setOpen(true);
+  }, [props.forceOpen]);
+  return (
+    <details className={props.className} open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
+      {props.children}
+    </details>
+  );
+}
+
 const num = (s: string) => (s.trim() === "" ? NaN : Number(s));
 const shown = (v: number) => (Number.isFinite(v) ? v : "");
 
@@ -56,6 +77,7 @@ export default function ParamPanel(props: Props) {
   const shortage = totalSupply < totalDemand;
   const demandErrors = Object.keys(errors).some((k) => k.startsWith("demand:"));
   const supplyErrors = Object.keys(errors).some((k) => k.startsWith("supply:"));
+  const hasDetailErrors = Object.keys(errors).length > 0 || shortage;
 
   const setParam = (key: keyof Params, value: number) =>
     onChange({ ...inputs, params: { ...inputs.params, [key]: value } });
@@ -73,32 +95,26 @@ export default function ParamPanel(props: Props) {
               onChange={() => onPrimaryChange("duration")}
             />
             <span>
-              <b>所要日数を最小化</b>
-              <small>総コストに上限 ε</small>
+              <b>
+                <span className="role primary-role">主目的</span>平均所要日数を最小化
+              </b>
+              <small>
+                <span className="role secondary-role">副目的</span>総輸送コストに上限 ε
+              </small>
             </span>
           </label>
           <label className={primary === "cost" ? "active" : ""}>
             <input type="radio" name="primary" checked={primary === "cost"} onChange={() => onPrimaryChange("cost")} />
             <span>
-              <b>総コストを最小化</b>
-              <small>平均所要日数に上限 ε</small>
+              <b>
+                <span className="role primary-role">主目的</span>総輸送コストを最小化
+              </b>
+              <small>
+                <span className="role secondary-role">副目的</span>平均所要日数に上限 ε
+              </small>
             </span>
           </label>
         </fieldset>
-        <label className={`field ${errors.nPoints ? "invalid" : ""}`}>
-          <span>パレートフロントの点の数</span>
-          <input
-            type="number"
-            min={N_POINTS_MIN}
-            max={N_POINTS_MAX}
-            step={1}
-            value={props.nPointsText}
-            onChange={(e) => props.onNPointsChange(e.target.value)}
-          />
-          <small className="unit">
-            {N_POINTS_MIN}〜{N_POINTS_MAX}
-          </small>
-        </label>
         {validation.messages.length > 0 && (
           <ul className="validation" role="alert">
             {validation.messages.map((m) => (
@@ -108,11 +124,11 @@ export default function ParamPanel(props: Props) {
         )}
         <div className="actions">
           <button
-            className="primary"
+            className={`primary ${props.stale && !props.computing ? "needs-recompute" : ""}`}
             onClick={props.onCompute}
             disabled={props.computing || validation.messages.length > 0}
           >
-            {props.computing ? "計算中…" : "計算"}
+            {props.computing ? "計算中…" : props.stale ? "再計算" : "計算"}
           </button>
           <button onClick={props.onReset} disabled={props.computing}>
             初期値に戻す
@@ -120,8 +136,33 @@ export default function ParamPanel(props: Props) {
         </div>
       </section>
 
+      {props.scenarioSlot}
+
+      {/* デモで触らない細かい入力は「詳細設定」にまとめ、最初は閉じておく（入力エラーがあるときは開く） */}
+      <AutoOpenDetails className="card advanced" forceOpen={hasDetailErrors}>
+        <summary>
+          <span>詳細設定</span>
+          <small className="muted">グラフ・パラメータ・需要・供給量</small>
+        </summary>
+        <section className="sub-section first">
+          <h2>グラフ</h2>
+          <label className={`field ${errors.nPoints ? "invalid" : ""}`}>
+            <span>パレートフロントの点の数</span>
+            <input
+              type="number"
+              min={N_POINTS_MIN}
+              max={N_POINTS_MAX}
+              step={1}
+              value={props.nPointsText}
+              onChange={(e) => props.onNPointsChange(e.target.value)}
+            />
+            <small className="unit">
+              {N_POINTS_MIN}〜{N_POINTS_MAX}
+            </small>
+          </label>
+        </section>
       {PARAM_GROUPS.map((group) => (
-        <section className="card" key={group.title}>
+        <section className="sub-section" key={group.title}>
           <h2>{group.title}</h2>
           {group.fields.map((f) => (
             <label className={`field ${errors[f.key] ? "invalid" : ""}`} key={f.key}>
@@ -140,7 +181,7 @@ export default function ParamPanel(props: Props) {
         </section>
       ))}
 
-      <section className="card">
+      <section className="sub-section">
         <h2>需要と供給量</h2>
         <p className={`totals ${shortage ? "error-text" : ""}`}>
           需要の合計 {fmtTon(totalDemand)} ／ 供給量の合計 {fmtTon(totalSupply)}
@@ -151,7 +192,7 @@ export default function ParamPanel(props: Props) {
             </>
           )}
         </p>
-        <details open={supplyErrors || undefined}>
+        <AutoOpenDetails forceOpen={supplyErrors}>
           <summary>港の供給量（{network.ports.length} 港）</summary>
           <table className="input-table">
             <tbody>
@@ -174,8 +215,8 @@ export default function ParamPanel(props: Props) {
               ))}
             </tbody>
           </table>
-        </details>
-        <details open={demandErrors || undefined}>
+        </AutoOpenDetails>
+        <AutoOpenDetails forceOpen={demandErrors}>
           <summary>配送センターの需要（{network.distribution_centers.length} か所）</summary>
           <table className="input-table">
             <tbody>
@@ -200,8 +241,9 @@ export default function ParamPanel(props: Props) {
               ))}
             </tbody>
           </table>
-        </details>
+        </AutoOpenDetails>
       </section>
+      </AutoOpenDetails>
     </aside>
   );
 }
