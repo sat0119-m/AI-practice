@@ -1,7 +1,7 @@
 # 多目的最適化 ― ε制約法 Web アプリ
 
 `09Multi_09Optimization_Epsilon_Constraint_Method_Python_Exercise_ja.py` をもとにした、React + FastAPI の Web アプリです。
-港から配送センターへの輸送で「道路のみ」と「鉄道＋道路」を選び、**総輸送コスト**と**平均所要日数**のトレードオフ（パレートフロント）を **AMPL**（ソルバーは HiGHS）で求めます。CO2 排出量は、各解の評価指標として表示します。
+港から配送センターへの輸送で「道路のみ」と「鉄道＋道路」を選び、**総輸送コスト**と**平均所要日数**のトレードオフ（パレートフロント）を **AMPL**（ソルバーは既定で HiGHS。授業用ライセンスがあれば Gurobi も使える）で求めます。CO2 排出量は、各解の評価指標として表示します。
 
 ローカルの PC で動かすためのアプリです（Vercel などへの公開は想定していません）。
 
@@ -10,7 +10,7 @@
 - ユートピア点とナディア点を求め、その間を等間隔に分けた ε でパレートフロントを描く（点の数は 5〜21）
 - ε をスライダーで動かし、その解の総輸送コスト・平均所要日数・CO2・輸送モードの割合と、地図上の輸送フローを表示する
 - 主目的の切り替え
-  - **所要日数を最小化**（総輸送コストに上限 ε。初期値）
+  - **平均所要日数を最小化**（総輸送コストに上限 ε。初期値）
   - **総輸送コストを最小化**（平均所要日数に上限 ε）
 - What-if シナリオ（港の停止・需要の増減・燃料の高騰・鉄道の遅延）をボタンで切り替える
   - 港の停止は、その港の貨物をほかの港へ供給量の比率で振り替える。需要の増減は供給量も同じ倍率にする
@@ -34,10 +34,13 @@ multiobjective_app/
 │       └── network.json             事前計算の結果（同梱済み）
 └── frontend/                        React + TypeScript（Vite）
     ├── package.json
+    ├── tests/scenario.test.ts       What-if シナリオと入力チェックの回帰テスト（npm test）
     └── src/
-        ├── App.tsx                  画面全体
+        ├── App.tsx                  画面全体（自動での再計算など）
+        ├── scenario.ts              What-if シナリオ（基準の入力にシナリオを当てる）
+        ├── validate.ts              入力チェック
         ├── api.ts / types.ts / format.ts
-        └── components/              入力パネル・パレートフロントのグラフ・地図・結果表示
+        └── components/              設定・シナリオ・パレートフロントのグラフ・地図・結果表示
 ```
 
 ## 他の PC で動かす手順
@@ -81,7 +84,7 @@ echo 'export AMPL_DIR="$HOME/ampl"' >> ~/.bashrc    # 今後ずっと有効に�
 
 WSL では Linux 版の AMPL が必要です（Windows 側の `ampl.exe` は WSL の Python からは使えません）。
 
-ソルバーを HiGHS 以外にしたいときは、環境変数 `AMPL_SOLVER` に AMPL のソルバー名を指定します（例: `cbc`、`gurobi`）。
+ソルバーを HiGHS 以外にしたいときは、環境変数 `AMPL_SOLVER` に AMPL のソルバー名を指定します（例: `gurobi`、`cbc`）。発表では `AMPL_SOLVER=gurobi`（授業用ライセンスの Gurobi）を使います。HiGHS と Gurobi で結果が一致することは確認済みです。
 
 ### 3. バックエンドの準備（初回のみ）
 
@@ -194,8 +197,12 @@ subject to  (総輸送コスト − ユートピアコスト) / (ナディアコ
 入力に誤りがあるとき（例: 供給量の合計が需要の合計より少ない）は、HTTP 422 と日本語のメッセージを返します。
 `uvicorn` の起動中は http://localhost:8000/docs で API を試せます。
 
+API は点の数として 2〜50 を受け付けます（画面では 5〜21）。
+
 API の定義（OpenAPI）は `backend/openapi.json` にも保存してあります。VS Code の拡張機能などでそのまま開けます。
-`main.py` の API を変えたら、`backend` フォルダで `python export_openapi.py` を実行して更新してください（サーバーの起動は不要）。
+`main.py` の API を変えたら、`backend` フォルダで `python export_openapi.py` を実行して更新してください（サーバーの起動は不要。fastapi などアプリ本体の依存パッケージが入った環境で実行します）。
+
+フロントエンドのテストは `frontend` フォルダで `npm test` を実行します（Node 22.6 以上）。
 
 ## 事前計算をやり直す場合
 
